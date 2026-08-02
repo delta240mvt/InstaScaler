@@ -4,11 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createCoreApi } from "@/lib/core-api/client";
 import { CoreApiError } from "@/lib/core-api/errors";
-
-export function safeCallbackUrl(value: string | null | undefined): string {
-  if (!value?.startsWith("/") || value.startsWith("//")) return "/dashboard";
-  return value;
-}
+import { safeCallbackUrl } from "@/lib/admin-auth/callback-url";
 
 export function validateAdminCredentials(login: string, password: string): string | null {
   return login.trim() && password ? null : "Enter login and password.";

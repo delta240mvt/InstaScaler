@@ -1,4 +1,5 @@
-import AdminLoginForm, { safeCallbackUrl } from "@/components/admin-login-form";
+import AdminLoginForm from "@/components/admin-login-form";
+import { safeCallbackUrl } from "@/lib/admin-auth/callback-url";
 
 export const metadata = {
   title: "Login - OpenReply",

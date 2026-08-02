@@ -2,9 +2,9 @@ import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 import {
   loginErrorMessage,
-  safeCallbackUrl,
   validateAdminCredentials,
 } from "@/components/admin-login-form";
+import { safeCallbackUrl } from "@/lib/admin-auth/callback-url";
 import { protectWebRoute as proxy } from "@/lib/web-route-protection";
 
 describe("admin login UI contract", () => {
