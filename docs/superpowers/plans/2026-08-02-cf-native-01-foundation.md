@@ -209,7 +209,7 @@ Run: `npx vitest run __tests__/db-client.test.ts && npm run typecheck`
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit** (`168169d`)
 
 ```powershell
 git add lib/db/neon.ts lib/db/types.ts __tests__/db-client.test.ts
@@ -229,7 +229,7 @@ git commit -m "refactor: use Neon serverless Prisma adapter"
 - Produces discriminated union `InstagramJob` with kinds `COMMENT`, `POSTBACK`, `FOLLOW_UP`, `MESSAGE`, `RECOVER_R2`.
 - Produces environment interfaces `CoreEnv` and `JobsEnv`.
 
-- [ ] **Step 1: Write failing contract tests**
+- [x] **Step 1: Write failing contract tests**
 
 Test `parseInstagramJob(value: unknown)` for one valid payload per kind,
 rejection of missing `externalId` or `instagramAccountId`, rejection of missing
@@ -240,7 +240,7 @@ Run: `npx vitest run __tests__/job-contracts.test.ts`
 
 Expected: FAIL because the contracts do not exist.
 
-- [ ] **Step 2: Implement contracts with Zod**
+- [x] **Step 2: Implement contracts with Zod**
 
 Use one base schema:
 
@@ -257,11 +257,11 @@ Extend `COMMENT`, `POSTBACK`, `MESSAGE`, and `RECOVER_R2` with
 instead carries `automationId`, `userId`, optional `commenterName`, and `dueAt`.
 Export the inferred union plus `parseInstagramJob`.
 
-- [ ] **Step 3: Add minimal entrypoints**
+- [x] **Step 3: Add minimal entrypoints**
 
 `workers/core/index.ts` returns JSON `{ status: "ok", service: "core" }` from `/health`. `workers/jobs/index.ts` exports a queue handler that logs batch size and acknowledges nothing explicitly.
 
-- [ ] **Step 4: Verify dry runs and tests**
+- [x] **Step 4: Verify dry runs and tests**
 
 Run:
 
