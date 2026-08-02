@@ -11,13 +11,14 @@
     "consumers": [{ "queue": "instascaler-events", "max_batch_size": 10, "max_batch_timeout": 5, "max_retries": 5, "dead_letter_queue": "instascaler-events-dlq" }]
   }
   ,"workflows": [
-    { "binding": "RECONCILE_WORKFLOW", "name": "instascaler-reconcile", "class_name": "ReconcileAccountWorkflow", "schedules": ["7 * * * *"] },
-    { "binding": "RECOVER_JOURNAL_WORKFLOW", "name": "instascaler-recover-journal", "class_name": "RecoverJournalWorkflow", "schedules": ["7 * * * *"] },
-    { "binding": "REFRESH_TOKENS_WORKFLOW", "name": "instascaler-refresh-tokens", "class_name": "RefreshTokensWorkflow", "schedules": ["0 5 * * *"] },
-    { "binding": "ATTACH_NEXT_REEL_WORKFLOW", "name": "instascaler-attach-next-reel", "class_name": "AttachNextReelWorkflow", "schedules": ["0 6 * * *"] },
-    { "binding": "SNAPSHOT_FOLLOWERS_WORKFLOW", "name": "instascaler-snapshot-followers", "class_name": "SnapshotFollowersWorkflow", "schedules": ["0 7 * * *"] },
-    { "binding": "RETENTION_WORKFLOW", "name": "instascaler-retention", "class_name": "RetentionWorkflow", "schedules": ["20 3 * * *"] }
+    { "binding": "RECONCILE_WORKFLOW", "name": "instascaler-reconcile", "class_name": "ReconcileAccountWorkflow" },
+    { "binding": "RECOVER_JOURNAL_WORKFLOW", "name": "instascaler-recover-journal", "class_name": "RecoverJournalWorkflow" },
+    { "binding": "REFRESH_TOKENS_WORKFLOW", "name": "instascaler-refresh-tokens", "class_name": "RefreshTokensWorkflow" },
+    { "binding": "ATTACH_NEXT_REEL_WORKFLOW", "name": "instascaler-attach-next-reel", "class_name": "AttachNextReelWorkflow" },
+    { "binding": "SNAPSHOT_FOLLOWERS_WORKFLOW", "name": "instascaler-snapshot-followers", "class_name": "SnapshotFollowersWorkflow" },
+    { "binding": "RETENTION_WORKFLOW", "name": "instascaler-retention", "class_name": "RetentionWorkflow" }
   ]
+  ,"triggers": { "crons": ["7 * * * *", "0 5 * * *", "0 6 * * *", "0 7 * * *", "20 3 * * *"] }
   ,"durable_objects": { "bindings": [{ "name": "ACCOUNT_RATE_LIMITER", "class_name": "AccountRateLimiter" }] }
   ,"migrations": [{ "tag": "v1", "new_sqlite_classes": ["AccountRateLimiter"] }]
 }

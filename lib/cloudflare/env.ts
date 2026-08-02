@@ -6,6 +6,10 @@ export type QueueBinding = {
   send(message: InstagramJob, options?: { delaySeconds?: number }): Promise<void>;
 };
 
+export type WorkflowBinding = {
+  create(options?: { id?: string; params?: unknown }): Promise<unknown>;
+};
+
 export type LoginThrottleStub = {
   checkAndRecord(success: boolean): Promise<{ allowed: boolean; retryAfterSeconds: number }>;
 };
@@ -42,4 +46,10 @@ export type JobsEnv = DatabaseEnv & {
     idFromName(name: string): unknown;
     get(id: unknown): { reserve(input: { amount: number; now: number }): Promise<{ allowed: boolean; retryAt: number | null; remaining: number }> };
   };
+  RECONCILE_WORKFLOW: WorkflowBinding;
+  RECOVER_JOURNAL_WORKFLOW: WorkflowBinding;
+  REFRESH_TOKENS_WORKFLOW: WorkflowBinding;
+  ATTACH_NEXT_REEL_WORKFLOW: WorkflowBinding;
+  SNAPSHOT_FOLLOWERS_WORKFLOW: WorkflowBinding;
+  RETENTION_WORKFLOW: WorkflowBinding;
 };

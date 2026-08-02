@@ -19,6 +19,7 @@ and all four implementation plans.
 - [x] Queue retries use bounded exponential backoff and reserve the extra read operation.
 - [x] One atomic global budget stops Queue, inbound and Workflow work below conservative daily ceilings across all five accounts; per-account counters remain diagnostic only.
 - [x] Reconciliation remains hourly and is bounded to five accounts and 100 comments per media.
+- [x] Free Worker Cron Triggers start the Workflows; paid direct Workflow schedules are not used.
 - [x] Per-account Durable Object capacity is persisted in SQLite.
 - [x] Detailed terminal records expire after 90 days; daily aggregates remain.
 

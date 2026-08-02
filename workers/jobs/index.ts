@@ -1,6 +1,6 @@
 import type { JobsEnv } from "@/lib/cloudflare/env";
 import { AccountRateLimiter } from "@/workers/jobs/account-rate-limiter";
-import { scheduledTasksForCron } from "@/workers/jobs/scheduled";
+import { startScheduledWorkflows } from "@/workers/jobs/scheduled";
 import { createPrisma } from "@/lib/db/neon";
 import { loadJournalEvent, deleteJournalEvent } from "@/lib/events/journal";
 import { parseInstagramJob } from "@/lib/jobs/contracts";
@@ -57,8 +57,9 @@ const worker = {
       return account ? reserveQueueRetry(db, account.id) : false;
     });
   },
-  async scheduled(event: { cron: string }): Promise<void> {
-    for (const task of scheduledTasksForCron(event.cron)) console.log("Starting scheduled Jobs task", { task });
+  async scheduled(event: { cron: string }, env: JobsEnv): Promise<void> {
+    const result = await startScheduledWorkflows(event.cron, env);
+    console.log("Scheduled Jobs workflows", { cron: event.cron, ...result });
   },
 };
 

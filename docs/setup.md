@@ -7,6 +7,8 @@
 3. Create Queues `instascaler-events` and `instascaler-events-dlq`.
 4. Keep the Worker names from the three `wrangler.*.jsonc` files.
 
+The Jobs Worker uses five Free-plan Cron Triggers. The hourly trigger starts reconciliation and journal recovery Workflows through their bindings; direct scheduled-Workflow triggers are intentionally not used because Cloudflare requires a paid Workers plan for them.
+
 ## 2. Set secrets
 
 Generate local values:

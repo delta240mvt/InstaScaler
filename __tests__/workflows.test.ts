@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { scheduledTasksForCron } from "@/workers/jobs/scheduled";
+import { describe, expect, it, vi } from "vitest";
+import { scheduledTasksForCron, startScheduledWorkflows } from "@/workers/jobs/scheduled";
 import { withJobRun, workflowExternalId, workflowJobKind } from "@/workers/jobs/workflows/services";
 import type { JobsEnv } from "@/lib/cloudflare/env";
 
@@ -22,5 +22,14 @@ describe("Jobs schedules", () => {
   });
   it("safely skips schedules until Neon is configured", async () => {
     await expect(withJobRun("reconcile", {} as JobsEnv, async () => { throw new Error("must not execute"); })).resolves.toEqual({ skipped: true, reason: "database_not_configured" });
+    await expect(startScheduledWorkflows("7 * * * *", {} as JobsEnv)).resolves.toEqual({ started: 0, skipped: true });
+  });
+  it("starts hourly Workflows from the free Worker cron trigger", async () => {
+    const reconcile = { create: vi.fn(async () => ({})) };
+    const recover = { create: vi.fn(async () => ({})) };
+    const env = { DATABASE_URL: "postgresql://configured", RECONCILE_WORKFLOW: reconcile, RECOVER_JOURNAL_WORKFLOW: recover } as unknown as JobsEnv;
+    await expect(startScheduledWorkflows("7 * * * *", env)).resolves.toEqual({ started: 2, skipped: false });
+    expect(reconcile.create).toHaveBeenCalledWith({ id: expect.stringMatching(/^workflow-reconcile-/) });
+    expect(recover.create).toHaveBeenCalledWith({ id: expect.stringMatching(/^workflow-recover-journal-/) });
   });
 });
