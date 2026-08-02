@@ -7,4 +7,6 @@
   "observability": { "enabled": true },
   "r2_buckets": [{ "binding": "EVENT_JOURNAL", "bucket_name": "instascaler-event-journal" }],
   "queues": { "consumers": [{ "queue": "instascaler-events", "max_batch_size": 10, "max_batch_timeout": 5 }] }
+  ,"durable_objects": { "bindings": [{ "name": "ACCOUNT_RATE_LIMITER", "class_name": "AccountRateLimiter" }] }
+  ,"migrations": [{ "tag": "v1", "new_classes": ["AccountRateLimiter"] }]
 }

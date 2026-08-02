@@ -30,4 +30,9 @@ export type CoreEnv = DatabaseEnv & {
 
 export type JobsEnv = DatabaseEnv & {
   META_APP_SECRET: string;
+  EVENT_JOURNAL: JournalBucket;
+  ACCOUNT_RATE_LIMITER: {
+    idFromName(name: string): unknown;
+    get(id: unknown): { reserve(input: { amount: number; now: number }): Promise<{ allowed: boolean; retryAt: number | null; remaining: number }> };
+  };
 };
