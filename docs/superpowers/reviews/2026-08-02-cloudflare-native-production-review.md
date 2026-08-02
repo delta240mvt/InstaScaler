@@ -1,7 +1,23 @@
 # Cloudflare-native production review
 
-Reviewed against `docs/superpowers/specs/2026-08-02-cloudflare-native-design.md`
-and all four implementation plans.
+Reviewed against `docs/superpowers/specs/2026-08-02-cloudflare-native-design.md`,
+`docs/superpowers/specs/2026-08-02-premium-light-uix-design.md` and all five
+implementation plans.
+
+## Premium light UIX
+
+- [x] The light ink/paper palette, indigo accent, spacing, radii, focus states and shaped skeletons are centralized as semantic primitives.
+- [x] Login is password-manager friendly, keyboard accessible and responsive at 320px with visible labels, password reveal and submit/error feedback.
+- [x] Desktop navigation and the labeled mobile drawer share grouped icon navigation, connection context and touch-safe controls.
+- [x] Dashboard, overview, follower chart and public reports use a consistent hierarchy and responsive metric layouts.
+- [x] Campaign discovery, import, editing, preview and detail views preserve every API field while adding touch-safe actions and keyboard-openable cards.
+- [x] Inbox uses one pane at a time on phones, with a 44px back action and a sticky safe-area composer; desktop retains the split view.
+- [x] Logs switch from a dense table to mobile cards. Settings, diagnostics, legal and Meta review surfaces use the same responsive light system.
+- [x] Source review confirmed responsive gutters, 16px mobile inputs, 44px primary targets, reduced-motion handling, semantic labels and no fixed page width below 320px.
+
+The two-axis code review found no remaining standards or specification blockers.
+During review, keyboard access for campaign cards, toggle hit areas and short-
+viewport inbox sizing were identified and corrected before release.
 
 ## Architecture and scope
 
@@ -43,11 +59,12 @@ and all four implementation plans.
 
 ## Verification and release
 
-- [x] All 135 unit/contract tests, typecheck, lint, Prisma validation and dependency audit pass.
+- [x] All 152 unit/contract tests across 29 files, typecheck, lint, Prisma validation and dependency audit pass.
 - [x] Playwright production scenarios are discoverable and ready for live credentials.
 - [x] OpenNext, Core and Jobs production bundles build and pass Cloudflare dry-run validation.
 - [x] Core starts in the local Cloudflare `workerd` runtime and returns `200` from `/health`.
 - [x] Bundle-size gates remain below the Workers Free compressed limit.
+- [x] Final compressed artifacts are Web 1.39 MiB, Core 0.27 MiB and Jobs 0.26 MiB, each below the 3 MiB gate.
 - [x] Production Queue, dead-letter Queue and R2 journal resources exist in Cloudflare.
 - [x] Web, Core, Jobs, six Workflows and both Durable Objects are deployed on the Free account.
 - [x] The hourly Durable Object alarm is armed; deployed Web login and both health endpoints return `200`.

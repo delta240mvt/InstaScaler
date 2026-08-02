@@ -286,7 +286,7 @@ git commit -m "feat: polish operational surfaces"
 **Interfaces:**
 - Produces a synchronized Git branch and deployed Cloudflare stack.
 
-- [ ] **Step 1: Run the complete local matrix**
+- [x] **Step 1: Run the complete local matrix**
 
 ```bash
 npm test
@@ -305,11 +305,11 @@ git diff --check
 
 Expected: all tests and checks pass; all gzip sizes remain below 3 MiB.
 
-- [ ] **Step 2: Perform source-level mobile review**
+- [x] **Step 2: Perform source-level mobile review**
 
 Confirm all administrator pages use responsive padding, no fixed content width below 320px, forms use visible labels, actions are touch-safe, inbox has one-pane mobile behavior, login has no overflow and reduced-motion rules remain intact.
 
-- [ ] **Step 3: Update review and checkboxes**
+- [x] **Step 3: Update review and checkboxes**
 
 Record the final test count, bundle sizes, UIX review findings and deployment smoke results. Change every completed checkbox in this plan to `[x]`.
 
