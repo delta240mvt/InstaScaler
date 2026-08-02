@@ -48,6 +48,9 @@ and all four implementation plans.
 - [x] OpenNext, Core and Jobs production bundles build and pass Cloudflare dry-run validation.
 - [x] Core starts in the local Cloudflare `workerd` runtime and returns `200` from `/health`.
 - [x] Bundle-size gates remain below the Workers Free compressed limit.
+- [x] Production Queue, dead-letter Queue and R2 journal resources exist in Cloudflare.
+- [x] Web, Core, Jobs, six Workflows and both Durable Objects are deployed on the Free account.
+- [x] The hourly Durable Object alarm is armed; deployed Web login and both health endpoints return `200`.
 - [ ] Apply the migration to the supplied Neon database.
 - [ ] Configure Cloudflare admin, Neon and Meta secrets.
 - [ ] Run browser and dedicated Meta acceptance tests on the deployed stack.
