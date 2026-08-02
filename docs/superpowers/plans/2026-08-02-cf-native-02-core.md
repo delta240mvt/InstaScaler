@@ -186,18 +186,18 @@ git commit -m "feat: port single-owner campaign API"
 - `GET /api/reports/:shareSlug`
 - `GET /r/:slug`
 
-- [ ] **Step 1: Write failing read-model tests**
+- [x] **Step 1: Write failing read-model tests**
 
 Test pagination, account filters, public report access without admin session, private log denial without session, unguessable share slugs, tracked-click insertion, and `404` for disabled reports or unknown links.
 
-- [ ] **Step 2: Port repository functions**
+- [x] **Step 2: Port repository functions**
 
 Port behavior into parallel Core modules. Every function accepts the generated
 CF-native `PrismaClient | Prisma.TransactionClient`; none imports a module-global
 database. Leave legacy modules until Plan 3/4 remove their consumers. Remove
 workspace filters and preserve Instagram-account filters.
 
-- [ ] **Step 3: Replace Redis health with database job health**
+- [x] **Step 3: Replace Redis health with database job health**
 
 Diagnostics must query `JobRun`, unresolved `OperationalEvent`, daily counters, last reconciliation per account, and:
 
@@ -207,7 +207,7 @@ SELECT pg_database_size(current_database()) AS bytes
 
 Return storage warning `normal`, `warning` at 70%, or `critical` at 85% of 536,870,912 bytes.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `npx vitest run __tests__/core-read-models.test.ts`
 

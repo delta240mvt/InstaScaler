@@ -12,12 +12,19 @@ import { automationRoutes } from "@/workers/core/routes/automations";
 import { instagramRoutes } from "@/workers/core/routes/instagram";
 import { webhookRoutes } from "@/workers/core/routes/webhook";
 import { dashboardRoutes, type DashboardDb } from "@/workers/core/routes/dashboard";
+import { reportRoutes, type ReportDb } from "@/workers/core/routes/reports";
+import { logRoutes, type LogDb } from "@/workers/core/routes/logs";
+import { diagnosticRoutes, type DiagnosticDb } from "@/workers/core/routes/diagnostics";
+import { redirectRoutes, type RedirectDb } from "@/workers/core/routes/redirects";
 
-export function createCoreApp(options?: { db?: AutomationStore & AccountDb & AccountConnectionDb & DashboardDb }) {
+type CoreDatabase = AutomationStore & AccountDb & AccountConnectionDb & DashboardDb & ReportDb & LogDb & DiagnosticDb & RedirectDb;
+
+export function createCoreApp(options?: { db?: CoreDatabase }) {
   const app = new Hono<{ Bindings: CoreEnv }>();
 
   app.get("/health", (context) => context.json({ status: "ok", service: "core" }));
   app.route("/", webhookRoutes());
+  app.route("/", redirectRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as RedirectDb));
   app.use("/api/*", requireSameOrigin);
   app.post("/api/auth/login", async (context) => {
     const body: { login?: unknown; password?: unknown } = await context.req.json<{ login?: unknown; password?: unknown }>().catch(() => ({}));
@@ -37,6 +44,9 @@ export function createCoreApp(options?: { db?: AutomationStore & AccountDb & Acc
   app.route("/api", automationRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as AutomationStore));
   app.route("/api", instagramRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as AccountDb & AccountConnectionDb));
   app.route("/api", dashboardRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as DashboardDb));
+  app.route("/api", reportRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as ReportDb));
+  app.route("/api", logRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as LogDb));
+  app.route("/api", diagnosticRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as DiagnosticDb));
   return app;
 }
 

@@ -27,6 +27,7 @@ export type CoreEnv = DatabaseEnv & {
   META_WEBHOOK_VERIFY_TOKEN: string;
   OAUTH_STATE_KEY: string;
   ENCRYPTION_KEY: string;
+  IP_HASH_SALT: string;
   SESSION_SIGNING_KEY: string;
   LOGIN_THROTTLE: LoginThrottleBinding;
   INSTAGRAM_EVENTS: QueueBinding;
