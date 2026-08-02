@@ -15,7 +15,7 @@ export default function MetaReviewPage() {
       updatedAt="May 24, 2026"
     >
       <section>
-        <h2 className="text-xl font-bold text-white">User Flow</h2>
+        <h2 className="text-xl font-bold text-foreground">User Flow</h2>
         <p className="mt-3">
           A business owner signs in by email, connects an Instagram professional
           account through Meta OAuth, creates a keyword campaign for a post or
@@ -26,7 +26,7 @@ export default function MetaReviewPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-bold text-white">Compliance Position</h2>
+        <h2 className="text-xl font-bold text-foreground">Compliance Position</h2>
         <p className="mt-3">
           The app uses official Meta APIs, verifies webhook signatures, encrypts
           tokens, avoids scraping, avoids password collection, and sends no more
@@ -35,7 +35,7 @@ export default function MetaReviewPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-bold text-white">Review Test Notes</h2>
+        <h2 className="text-xl font-bold text-foreground">Review Test Notes</h2>
         <p className="mt-3">
           Reviewers can use a Meta test business, connect an Instagram
           professional account, create a keyword such as LINK, comment that

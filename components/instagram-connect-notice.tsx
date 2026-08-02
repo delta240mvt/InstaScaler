@@ -115,7 +115,7 @@ function Notice({
   children: React.ReactNode;
 }) {
   return (
-    <div className={`rounded border p-4 text-sm ${TONE_CLASSES[tone]}`}>
+    <div role="status" className={`rounded-2xl border p-4 text-sm shadow-sm ${TONE_CLASSES[tone]}`}>
       <p className="font-semibold">{title}</p>
       <div className="mt-1 opacity-90">{children}</div>
     </div>

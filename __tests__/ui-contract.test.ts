@@ -125,3 +125,26 @@ describe("mobile inbox and activity", () => {
     expect(logs).toContain("hidden overflow-x-auto md:block");
   });
 });
+
+describe("operational and public surfaces", () => {
+  it("separates account connection and destructive settings actions", () => {
+    const settings = source("app/(dashboard)/settings/page.tsx");
+    expect(settings).toContain("app-page-title");
+    expect(settings).toContain("app-button-danger");
+    expect(settings).toContain("Connect up to five");
+  });
+
+  it("makes free-plan budgets and replay operations scannable", () => {
+    const diagnostics = source("app/(dashboard)/diagnostics/page.tsx");
+    expect(diagnostics).toContain("app-page-title");
+    expect(diagnostics).toContain("BudgetBar");
+    expect(diagnostics).toContain("app-button-secondary");
+  });
+
+  it("uses consistent light branding for legal and review surfaces", () => {
+    const legal = source("components/legal-shell.tsx");
+    expect(legal).toContain("OpenReply");
+    expect(legal).toContain("app-page-title");
+    expect(legal).not.toContain("text-zinc-300");
+  });
+});

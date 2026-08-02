@@ -251,23 +251,23 @@ git commit -m "feat: perfect inbox and activity UIX"
 - Preserve reconnect, replay, logout and disconnect behavior.
 - Legal/public content remains unchanged except layout and presentation.
 
-- [ ] **Step 1: Add operational hierarchy contracts**
+- [x] **Step 1: Add operational hierarchy contracts**
 
 Assert reconnect warnings, budget progress, replay actions, destructive separation, legal shell branding and mobile action targets.
 
-- [ ] **Step 2: Run contract test and confirm failure**
+- [x] **Step 2: Run contract test and confirm failure**
 
 Run: `npx vitest run __tests__/ui-contract.test.ts`
 
-- [ ] **Step 3: Polish settings and diagnostics**
+- [x] **Step 3: Polish settings and diagnostics**
 
 Create account identity cards, strong connection state, separated administrator session area, scannable budgets/incidents/jobs and clear replay affordances. Preserve every operational value.
 
-- [ ] **Step 4: Align public/legal surfaces**
+- [x] **Step 4: Align public/legal surfaces**
 
 Apply the brand mark, readable article width, restrained navigation and consistent footer to legal and Meta review pages.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `npx vitest run __tests__/ui-contract.test.ts __tests__/core-contract.test.ts && npm run typecheck && npm run lint`
 
