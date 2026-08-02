@@ -5,6 +5,7 @@ import { useState } from "react";
 import { createCoreApi } from "@/lib/core-api/client";
 import { CoreApiError } from "@/lib/core-api/errors";
 import { safeCallbackUrl } from "@/lib/admin-auth/callback-url";
+import { Icon } from "@/components/ui-icons";
 
 export function validateAdminCredentials(login: string, password: string): string | null {
   return login.trim() && password ? null : "Enter login and password.";
@@ -25,6 +26,7 @@ export default function AdminLoginForm({ callbackUrl }: { callbackUrl?: string }
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,8 +51,8 @@ export default function AdminLoginForm({ callbackUrl }: { callbackUrl?: string }
 
   return (
     <form onSubmit={submit} className="space-y-5" noValidate>
-      <div className="space-y-2">
-        <label htmlFor="login" className="block text-sm font-medium text-foreground">Login</label>
+      <div className="space-y-1.5">
+        <label htmlFor="login" className="app-label">Login</label>
         <input
           id="login"
           name="login"
@@ -58,29 +60,27 @@ export default function AdminLoginForm({ callbackUrl }: { callbackUrl?: string }
           onChange={(event) => setLogin(event.target.value)}
           autoComplete="username"
           required
-          className="w-full rounded border border-border bg-surface px-4 py-3 text-sm text-foreground outline-none transition-colors focus:border-accent/40"
+          placeholder="Administrator login"
+          className="app-field"
         />
       </div>
-      <div className="space-y-2">
-        <label htmlFor="password" className="block text-sm font-medium text-foreground">Password</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          autoComplete="current-password"
-          required
-          className="w-full rounded border border-border bg-surface px-4 py-3 text-sm text-foreground outline-none transition-colors focus:border-accent/40"
-        />
+      <div className="space-y-1.5">
+        <label htmlFor="password" className="app-label">Password</label>
+        <div className="relative">
+          <input id="password" name="password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required placeholder="Your password" className="app-field pr-12" />
+          <button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-1 top-1/2 grid min-h-11 min-w-11 -translate-y-1/2 place-items-center rounded-lg text-muted hover:bg-surface-hover hover:text-foreground">
+            <Icon name="eye" size={18} className={showPassword ? "hidden" : "block"} />
+            <Icon name="eyeOff" size={18} className={showPassword ? "block" : "hidden"} />
+          </button>
+        </div>
       </div>
-      {error && <p role="alert" className="text-sm text-error">{error}</p>}
+      {error && <p role="alert" className="flex items-start gap-2 rounded-xl border border-error/15 bg-error/6 px-3 py-2.5 text-sm text-error"><Icon name="alert" size={16} className="mt-0.5 shrink-0" />{error}</p>}
       <button
         type="submit"
         disabled={submitting}
-        className="inline-flex w-full items-center justify-center rounded bg-accent px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+        className="app-button app-button-primary w-full"
       >
-        {submitting ? "Signing in..." : "Sign in"}
+        {submitting ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />Signing in...</> : <>Sign in<Icon name="arrowRight" size={17} /></>}
       </button>
     </form>
   );

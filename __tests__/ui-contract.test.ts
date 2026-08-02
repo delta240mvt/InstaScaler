@@ -39,3 +39,29 @@ describe("premium light UI foundation", () => {
     }
   });
 });
+
+describe("responsive shell and login", () => {
+  it("uses an accessible mobile navigation dialog with touch-safe controls", () => {
+    const sidebar = source("components/sidebar.tsx");
+    expect(sidebar).toContain('role={isOpen ? "dialog" : undefined}');
+    expect(sidebar).toContain("aria-modal={isOpen ? true : undefined}");
+    expect(sidebar).toContain('aria-label="Close navigation"');
+    expect(sidebar).toContain("min-h-11");
+  });
+
+  it("keeps the shell viewport-safe with compact phone gutters", () => {
+    const shell = source("components/dashboard-shell.tsx");
+    expect(shell).toContain("h-dvh");
+    expect(shell).toContain("px-3");
+    expect(shell).toContain("sm:px-6");
+  });
+
+  it("gives login a premium private-workspace treatment and password visibility", () => {
+    const page = source("app/login/page.tsx");
+    const form = source("components/admin-login-form.tsx");
+    expect(page).toContain("Your private creator workspace");
+    expect(page).toContain("lg:grid-cols-2");
+    expect(form).toContain('aria-label={showPassword ? "Hide password" : "Show password"}');
+    expect(form).toContain('name="eye"');
+  });
+});

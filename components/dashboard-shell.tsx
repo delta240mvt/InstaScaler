@@ -30,7 +30,7 @@ export default function DashboardShell({
       .catch(() => { router.replace("/login"); router.refresh(); });
   }, [router]);
 
-  if (!sessionChecked) return <div className="min-h-dvh bg-background" aria-label="Checking session" />;
+  if (!sessionChecked) return <div className="flex min-h-dvh items-center justify-center bg-background" aria-label="Checking session"><div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-accent" /></div>;
 
   return (
     // h-dvh, not h-screen: on mobile browsers the URL bar eats into 100vh, which
@@ -49,7 +49,7 @@ export default function DashboardShell({
         />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="px-4 lg:px-8 py-5 sm:py-6 max-w-7xl mx-auto">
+          <div className="mx-auto w-full max-w-[1440px] px-3 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
             {children}
           </div>
         </main>

@@ -86,31 +86,31 @@ git commit -m "feat: add premium light design system"
 - Top bar remains source-compatible with existing account props.
 - Add pure `passwordInputType(visible: boolean): "text" | "password"` only if a testable helper is useful; login API behavior remains unchanged.
 
-- [ ] **Step 1: Extend failing contracts**
+- [x] **Step 1: Extend failing contracts**
 
 Assert the login retains correct callback sanitization, exposes password visibility semantics, the mobile sidebar has dialog labeling and shell uses `dvh`, touch targets and responsive gutters.
 
-- [ ] **Step 2: Run focused tests and confirm failure**
+- [x] **Step 2: Run focused tests and confirm failure**
 
 Run: `npx vitest run __tests__/web-auth.test.ts __tests__/ui-contract.test.ts`
 
 Expected: at least the new visual/mobile assertions fail.
 
-- [ ] **Step 3: Implement the shell**
+- [x] **Step 3: Implement the shell**
 
 Create a compact brand block, icon navigation, active indicator, system footer, polished account status and accessible mobile drawer. Close the drawer on navigation, keep sticky top context and prevent content overflow.
 
-- [ ] **Step 4: Implement login**
+- [x] **Step 4: Implement login**
 
 Create a premium two-column wide layout with a focused mobile card, private workspace copy, branded mark, secure sign-in note, 44px controls, show/hide password and in-button progress indicator. Preserve username/password autocomplete and inline errors.
 
-- [ ] **Step 5: Verify login and shell**
+- [x] **Step 5: Verify login and shell**
 
 Run: `npx vitest run __tests__/web-auth.test.ts __tests__/ui-contract.test.ts && npm run typecheck && npm run lint`
 
 Expected: all pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add components/sidebar.tsx components/top-bar.tsx components/dashboard-shell.tsx app/login/page.tsx components/admin-login-form.tsx __tests__/web-auth.test.ts __tests__/ui-contract.test.ts
