@@ -6,7 +6,7 @@ import { requireAdmin } from "@/workers/core/middleware/auth";
 
 export function automationRoutes(getDb: (env: CoreEnv) => AutomationStore) {
   const app = new Hono<{ Bindings: CoreEnv }>();
-  app.use("*", requireAdmin);
+  app.use("/automations*", requireAdmin);
   app.get("/automations", async (context) => context.json({ data: await listAutomations(getDb(context.env), context.req.query("instagramAccountId")) }));
   app.post("/automations", async (context) => {
     try { return context.json({ data: await createAutomation(getDb(context.env), await context.req.json<AutomationInput>()) }, 201); }

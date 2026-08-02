@@ -11,7 +11,7 @@ export type DashboardDb = {
 
 export function dashboardRoutes(getDb: (env: CoreEnv) => DashboardDb) {
   const app = new Hono<{ Bindings: CoreEnv }>();
-  app.use("*", requireAdmin);
+  app.use("/dashboard/*", requireAdmin);
   app.get("/dashboard/stats", async (context) => {
     const db = getDb(context.env);
     const accountId = context.req.query("instagramAccountId");

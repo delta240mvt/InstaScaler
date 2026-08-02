@@ -30,15 +30,15 @@
 - `createCoreApi(options: { baseUrl: string; cookie?: string; fetch?: typeof fetch }): CoreApi`
 - `CoreApiError` with `status`, `code`, and `requestId`.
 
-- [ ] **Step 1: Write failing client tests**
+- [x] **Step 1: Write failing client tests**
 
 Test cookie forwarding on server calls, relative browser requests, JSON error parsing, `204` handling, query-string encoding, and abort propagation.
 
-- [ ] **Step 2: Implement one transport**
+- [x] **Step 2: Implement one transport**
 
 All methods call a private `request<T>(path, init)` function. Expose typed methods for session, stats, accounts, automations, imports, posts, overview, inbox, logs, diagnostics, and reports. Do not duplicate `fetch` wrappers inside page components.
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 Run: `npx vitest run __tests__/core-api-client.test.ts`
 

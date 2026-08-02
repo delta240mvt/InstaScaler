@@ -222,7 +222,7 @@ git commit -m "feat: port reports and diagnostics API"
 - Modify: `workers/core/index.ts`
 - Create: `__tests__/core-contract.test.ts`
 
-- [ ] **Step 1: Add a route contract test**
+- [x] **Step 1: Add a route contract test**
 
 Assert all documented methods and paths are mounted, unknown `/api/*` returns JSON `404`, thrown validation errors return `400`, unauthenticated private routes return `401`, and unexpected errors return a request ID without stack traces.
 

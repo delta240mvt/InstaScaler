@@ -12,7 +12,7 @@ export type DiagnosticDb = {
 
 export function diagnosticRoutes(getDb: (env: CoreEnv) => DiagnosticDb) {
   const app = new Hono<{ Bindings: CoreEnv }>();
-  app.use("*", requireAdmin);
+  app.use("/diagnostics", requireAdmin);
   app.get("/diagnostics", async (context) => {
     const db = getDb(context.env);
     const [jobRuns, operationalEvents, dailyCounters, storageRows] = await Promise.all([

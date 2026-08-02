@@ -7,7 +7,7 @@ export type LogDb = { dmLog: { findMany(args: unknown): Promise<unknown[]>; coun
 
 export function logRoutes(getDb: (env: CoreEnv) => LogDb) {
   const app = new Hono<{ Bindings: CoreEnv }>();
-  app.use("*", requireAdmin);
+  app.use("/logs", requireAdmin);
   app.get("/logs", async (context) => {
     const page = normalizePagination({ page: context.req.query("page"), pageSize: context.req.query("pageSize") });
     const instagramAccountId = context.req.query("instagramAccountId");

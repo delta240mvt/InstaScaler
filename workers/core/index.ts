@@ -16,6 +16,7 @@ import { reportRoutes, type ReportDb } from "@/workers/core/routes/reports";
 import { logRoutes, type LogDb } from "@/workers/core/routes/logs";
 import { diagnosticRoutes, type DiagnosticDb } from "@/workers/core/routes/diagnostics";
 import { redirectRoutes, type RedirectDb } from "@/workers/core/routes/redirects";
+import { errorPayload, errorStatus } from "@/workers/core/middleware/errors";
 
 type CoreDatabase = AutomationStore & AccountDb & AccountConnectionDb & DashboardDb & ReportDb & LogDb & DiagnosticDb & RedirectDb;
 
@@ -47,6 +48,12 @@ export function createCoreApp(options?: { db?: CoreDatabase }) {
   app.route("/api", reportRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as ReportDb));
   app.route("/api", logRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as LogDb));
   app.route("/api", diagnosticRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as DiagnosticDb));
+  app.notFound((context) => context.json({ error: "not_found" }, 404));
+  app.onError((error, context) => {
+    const requestId = crypto.randomUUID();
+    console.error("Core request failed", { requestId, error: error instanceof Error ? error.message : "unknown" });
+    return context.json(errorPayload(error, requestId), errorStatus(error));
+  });
   return app;
 }
 

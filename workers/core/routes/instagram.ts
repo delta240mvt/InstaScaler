@@ -32,7 +32,7 @@ export function instagramRoutes(getDb: (env: CoreEnv) => InstagramDb) {
     }
   });
 
-  app.use("*", requireAdmin);
+  app.use("/instagram/*", requireAdmin);
   app.get("/instagram/connect", async (context) => {
     const returnTo = `${context.env.APP_BASE_URL}/settings`;
     const state = await createOAuthState(returnTo, Math.floor(Date.now() / 1000), context.env.OAUTH_STATE_KEY);
