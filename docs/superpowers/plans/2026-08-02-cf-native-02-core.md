@@ -128,11 +128,11 @@ git commit -m "feat: protect core API with admin auth"
 - `GET /api/dashboard/stats`
 - `/api/instagram/{connect,callback,accounts,disconnect,profile,posts,overview,conversations}`
 
-- [ ] **Step 1: Write failing route tests**
+- [x] **Step 1: Write failing route tests**
 
 Cover campaign CRUD, CSV import, account filtering, the five-account rejection `ACCOUNT_LIMIT_REACHED`, OAuth state signing, token encryption, and no `workspaceId` in request or response payloads.
 
-- [ ] **Step 2: Extract campaign service**
+- [x] **Step 2: Extract campaign service**
 
 Move validation and persistence from `app/api/automations/route.ts` and `app/api/automations/import/route.ts` into functions accepting a Prisma transaction/client explicitly:
 
@@ -146,20 +146,20 @@ importAutomations(db, rows)
 
 Keep every current campaign field, including `requireFollowBeforeFreebie`, opening DM, public reply variants, follow prompt, and follow-up delay capped at 1,440 minutes.
 
-- [ ] **Step 3: Port Instagram routes**
+- [x] **Step 3: Port Instagram routes**
 
 Implement new Core services without workspace resolution. Leave legacy
 workspace modules in place until the Web migration removes their remaining
 consumers. Enforce account count inside the same transaction that creates an
 account. Preserve encrypted access tokens and Meta OAuth CSRF state.
 
-- [ ] **Step 4: Mount routes and verify**
+- [x] **Step 4: Mount routes and verify**
 
 Run: `npx vitest run __tests__/core-automations.test.ts __tests__/core-instagram.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add workers/core/routes lib/automations lib/core __tests__/core-*.test.ts

@@ -5,14 +5,15 @@ import { createSessionToken, verifySessionToken } from "@/lib/admin-auth/session
 import type { CoreEnv } from "@/lib/cloudflare/env";
 import { createPrisma } from "@/lib/db/neon";
 import type { AutomationStore } from "@/lib/automations/service";
-import type { AccountDb } from "@/lib/core/instagram-accounts";
+import type { AccountConnectionDb, AccountDb } from "@/lib/core/instagram-accounts";
 import { LoginThrottle } from "@/workers/core/login-throttle";
 import { requireAdmin, requireSameOrigin } from "@/workers/core/middleware/auth";
 import { automationRoutes } from "@/workers/core/routes/automations";
 import { instagramRoutes } from "@/workers/core/routes/instagram";
 import { webhookRoutes } from "@/workers/core/routes/webhook";
+import { dashboardRoutes, type DashboardDb } from "@/workers/core/routes/dashboard";
 
-export function createCoreApp(options?: { db?: AutomationStore & AccountDb }) {
+export function createCoreApp(options?: { db?: AutomationStore & AccountDb & AccountConnectionDb & DashboardDb }) {
   const app = new Hono<{ Bindings: CoreEnv }>();
 
   app.get("/health", (context) => context.json({ status: "ok", service: "core" }));
@@ -34,7 +35,8 @@ export function createCoreApp(options?: { db?: AutomationStore & AccountDb }) {
     return context.json({ ok: true });
   });
   app.route("/api", automationRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as AutomationStore));
-  app.route("/api", instagramRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as AccountDb));
+  app.route("/api", instagramRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as AccountDb & AccountConnectionDb));
+  app.route("/api", dashboardRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as DashboardDb));
   return app;
 }
 

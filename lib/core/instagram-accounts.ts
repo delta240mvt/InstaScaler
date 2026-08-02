@@ -2,12 +2,26 @@ export class AccountLimitError extends Error {
   code = "ACCOUNT_LIMIT_REACHED" as const;
 }
 
-export type AccountDb = { instagramAccount: { count(args?: unknown): Promise<number>; upsert(args: unknown): Promise<unknown>; findMany(args?: unknown): Promise<unknown[]>; delete(args: unknown): Promise<unknown> } };
+export type AccountDb = { instagramAccount: { count(args?: unknown): Promise<number>; upsert(args: unknown): Promise<unknown>; findMany(args?: unknown): Promise<unknown[]>; findFirst(args?: unknown): Promise<unknown | null>; findUnique(args: unknown): Promise<unknown | null>; delete(args: unknown): Promise<unknown> } };
 
-export async function connectInstagramAccount(db: { instagramAccount: Pick<AccountDb["instagramAccount"], "count" | "upsert"> }, input: { instagramId: string; username: string; name?: string | null; accessToken: string; tokenExpiresAt?: Date | null; webhookSubscribed?: boolean }) {
-  const existingCount = await db.instagramAccount.count();
-  if (existingCount >= 5) throw new AccountLimitError("Up to five Instagram accounts are allowed");
-  return db.instagramAccount.upsert({ where: { instagramId: input.instagramId }, create: input, update: input });
+type AccountConnectionModels = {
+  instagramAccount: {
+    findUnique(args: unknown): Promise<unknown | null>;
+    count(args?: unknown): Promise<number>;
+    upsert(args: unknown): Promise<unknown>;
+  };
+};
+
+export type AccountConnectionDb = {
+  $transaction(callback: (transaction: AccountConnectionModels) => Promise<unknown>): Promise<unknown>;
+};
+
+export async function connectInstagramAccount(db: AccountConnectionDb, input: { instagramId: string; username: string; name?: string | null; accessToken: string; tokenExpiresAt?: Date | null; webhookSubscribed?: boolean }) {
+  return db.$transaction(async (transaction) => {
+    const existing = await transaction.instagramAccount.findUnique({ where: { instagramId: input.instagramId }, select: { id: true } });
+    if (!existing && await transaction.instagramAccount.count() >= 5) throw new AccountLimitError("Up to five Instagram accounts are allowed");
+    return transaction.instagramAccount.upsert({ where: { instagramId: input.instagramId }, create: input, update: input });
+  });
 }
 
 export function listInstagramAccounts(db: AccountDb) {

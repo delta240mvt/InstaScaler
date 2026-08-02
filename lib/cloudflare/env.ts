@@ -16,12 +16,17 @@ export type LoginThrottleBinding = {
 };
 
 export type CoreEnv = DatabaseEnv & {
+  APP_BASE_URL: string;
   ADMIN_LOGIN: string;
   ADMIN_SESSION_SECRET: string;
   ADMIN_PASSWORD_PEPPER: string;
   ADMIN_PASSWORD_VERIFIER: string;
   META_APP_SECRET: string;
+  META_APP_ID: string;
+  META_REDIRECT_URI: string;
   META_WEBHOOK_VERIFY_TOKEN: string;
+  OAUTH_STATE_KEY: string;
+  ENCRYPTION_KEY: string;
   SESSION_SIGNING_KEY: string;
   LOGIN_THROTTLE: LoginThrottleBinding;
   INSTAGRAM_EVENTS: QueueBinding;

@@ -71,6 +71,22 @@ export async function deleteAutomation(db: { automation: Pick<AutomationStore["a
   return db.automation.delete({ where: { id } });
 }
 
-export async function importAutomations(db: { automation: Pick<AutomationStore["automation"], "create"> }, rows: AutomationInput[]) {
-  return Promise.all(rows.map((row) => createAutomation(db, row)));
+export async function importAutomations(db: { automation: Pick<AutomationStore["automation"], "findMany" | "create"> }, rows: AutomationInput[]) {
+  const accountId = rows[0]?.instagramAccountId;
+  const existing = await db.automation.findMany({ where: accountId ? { instagramAccountId: accountId } : {}, select: { postId: true } }) as { postId?: string | null }[];
+  const usedPostIds = new Set(existing.flatMap((row) => row.postId ? [row.postId] : []));
+  const created: { name: string; postId: string }[] = [];
+  const skipped: { row: number; reason: string }[] = [];
+  for (const [index, row] of rows.entries()) {
+    if (row.postId && usedPostIds.has(row.postId)) {
+      skipped.push({ row: index + 1, reason: "a campaign already exists for this post" });
+      continue;
+    }
+    await createAutomation(db, row);
+    if (row.postId) {
+      usedPostIds.add(row.postId);
+      created.push({ name: row.name, postId: row.postId });
+    }
+  }
+  return { created, skipped };
 }
