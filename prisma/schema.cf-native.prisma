@@ -1,0 +1,273 @@
+// Cloudflare-native, single-owner schema. This stays parallel to schema.prisma
+// until the final production cutover.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/cf-native"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model InstagramAccount {
+  id                String   @id @default(cuid())
+  instagramId       String   @unique
+  username          String
+  name              String?
+  accessToken       String
+  tokenExpiresAt    DateTime?
+  webhookSubscribed Boolean  @default(false)
+  connectedAt       DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  automations       Automation[]
+  dmLogs            DmLog[]
+  linkClicks        LinkClick[]
+  followerSnapshots FollowerSnapshot[]
+  dailyAggregates   DailyAggregate[]
+  processedEvents   ProcessedEvent[]
+  jobRuns           JobRun[]
+
+  @@index([updatedAt])
+}
+
+model Automation {
+  id                          String   @id @default(cuid())
+  instagramAccountId          String
+  name                        String
+  goal                        String?
+  postId                      String?
+  postUrl                     String?
+  pendingNextReel             Boolean  @default(false)
+  matchAnyPost                Boolean  @default(false)
+  keywords                    String[]
+  matchAnyWord                Boolean  @default(false)
+  dmTriggerEnabled            Boolean  @default(false)
+  dmMessage                   String
+  openingDmEnabled            Boolean  @default(false)
+  openingDmMessage            String?
+  openingDmButtonLabel        String?
+  linkButtonLabel             String?
+  requireFollowBeforeFreebie  Boolean  @default(false)
+  followPromptMessage         String?
+  followPromptButtonLabel     String?
+  followUpEnabled             Boolean  @default(false)
+  followUpMessage             String?
+  followUpDelayMinutes        Int      @default(0)
+  publicReplyEnabled          Boolean  @default(false)
+  publicReplyMessage          String?
+  publicReplyMessages         String[] @default([])
+  isActive                    Boolean  @default(true)
+  wholeWordMatch              Boolean  @default(true)
+  reportShareSlug             String?  @unique
+  reportShareEnabled          Boolean  @default(false)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  dmLogs           DmLog[]
+  trackedLinks     TrackedLink[]
+  linkClicks       LinkClick[]
+  jobRuns          JobRun[]
+
+  @@index([instagramAccountId, isActive])
+  @@index([postId])
+  @@index([updatedAt])
+}
+
+model ProcessedEvent {
+  id                 String      @id @default(cuid())
+  externalId         String      @unique
+  instagramAccountId String?
+  source             EventSource
+  kind               JobKind
+  terminalStatus     JobStatus?
+  r2Key              String?
+  firstSeenAt        DateTime    @default(now())
+  completedAt        DateTime?
+
+  instagramAccount InstagramAccount? @relation(fields: [instagramAccountId], references: [id], onDelete: SetNull)
+
+  @@index([instagramAccountId, firstSeenAt])
+  @@index([firstSeenAt])
+  @@index([terminalStatus, completedAt])
+}
+
+model DmLog {
+  id                 String         @id @default(cuid())
+  automationId       String
+  instagramAccountId String
+  externalId         String         @unique
+  commenterId        String
+  commenterName      String?
+  commentText        String?
+  commentId          String?
+  matchedKeyword     String?
+  status             DeliveryStatus @default(QUEUED)
+  attempts           Int            @default(0)
+  dmSentAt           DateTime?
+  errorMessage       String?
+  publicReplySentAt  DateTime?
+  publicReplyError   String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  automation       Automation       @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  @@index([automationId, createdAt])
+  @@index([instagramAccountId, createdAt])
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+model TrackedLink {
+  id             String   @id @default(cuid())
+  automationId   String
+  slug           String   @unique
+  label          String?
+  destinationUrl String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  automation Automation  @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  clicks     LinkClick[]
+
+  @@index([automationId, createdAt])
+}
+
+model LinkClick {
+  id                 String   @id @default(cuid())
+  automationId       String
+  instagramAccountId String
+  trackedLinkId      String
+  ipHash             String?
+  userAgent          String?
+  referrer           String?
+  createdAt          DateTime @default(now())
+
+  automation       Automation       @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  trackedLink      TrackedLink      @relation(fields: [trackedLinkId], references: [id], onDelete: Cascade)
+
+  @@index([automationId, createdAt])
+  @@index([instagramAccountId, createdAt])
+  @@index([trackedLinkId, createdAt])
+  @@index([createdAt])
+}
+
+model FollowerSnapshot {
+  id                 String   @id @default(cuid())
+  instagramAccountId String
+  date               DateTime @db.Date
+  followersCount     Int
+  backfilled         Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([instagramAccountId, date])
+  @@index([date])
+  @@index([createdAt])
+}
+
+model DailyAggregate {
+  id                 String   @id @default(cuid())
+  date               DateTime @db.Date
+  instagramAccountId String
+  received           Int      @default(0)
+  sent               Int      @default(0)
+  failed             Int      @default(0)
+  skipped            Int      @default(0)
+  queueJobs          Int      @default(0)
+  workflowSteps      Int      @default(0)
+
+  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([date, instagramAccountId])
+  @@index([date])
+}
+
+model OperationalEvent {
+  id        String                  @id @default(cuid())
+  source    OperationalEventSource
+  level     OperationalEventLevel   @default(INFO)
+  message   String
+  payload   Json?
+  createdAt DateTime                @default(now())
+  resolvedAt DateTime?
+
+  @@index([createdAt])
+  @@index([source, createdAt])
+  @@index([level, createdAt])
+}
+
+model JobRun {
+  id                 String      @id @default(cuid())
+  externalId         String?
+  automationId       String?
+  instagramAccountId String?
+  kind               JobKind
+  status             JobStatus   @default(RECEIVED)
+  attempt            Int         @default(1)
+  errorMessage       String?
+  startedAt          DateTime    @default(now())
+  finishedAt         DateTime?
+  createdAt          DateTime    @default(now())
+
+  automation       Automation?       @relation(fields: [automationId], references: [id], onDelete: SetNull)
+  instagramAccount InstagramAccount? @relation(fields: [instagramAccountId], references: [id], onDelete: SetNull)
+
+  @@index([externalId, createdAt])
+  @@index([instagramAccountId, createdAt])
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+enum DeliveryStatus {
+  QUEUED
+  PROCESSING
+  SENT
+  SKIPPED
+  RETRYING
+  FAILED
+}
+
+enum JobKind {
+  COMMENT
+  POSTBACK
+  FOLLOW_UP
+  MESSAGE
+  RECOVER_R2
+}
+
+enum JobStatus {
+  RECEIVED
+  PROCESSING
+  COMPLETED
+  SKIPPED
+  RETRYING
+  FAILED
+}
+
+enum EventSource {
+  WEBHOOK
+  POLLING
+  INTERNAL
+  RECOVERY
+}
+
+enum OperationalEventSource {
+  CORE
+  JOBS
+  WORKFLOW
+  CRON
+  SYSTEM
+}
+
+enum OperationalEventLevel {
+  INFO
+  WARNING
+  ERROR
+}

@@ -31,13 +31,15 @@
 **Interfaces:**
 - Produces scripts: `cf:build:web`, `cf:dev:core`, `cf:dev:jobs`, `cf:deploy:web`, `cf:deploy:core`, `cf:deploy:jobs`, `cf:typegen`.
 
-- [ ] **Step 1: Record the current baseline**
+- [x] **Step 1: Record the current baseline**
 
 Run: `npm test && npm run typecheck && npm run lint`
 
 Expected: all existing checks pass before dependency changes. Record any pre-existing failure in the plan execution notes.
 
-- [ ] **Step 2: Install exact capability dependencies**
+> Execution note (2026-08-02): `npm test` (132 assertions) and `npm run lint` passed. Legacy `npm run typecheck` fails before this migration because the imported app has missing BullMQ/Recharts declaration files and existing old-app type errors. The new Cloudflare-native modules are validated separately while legacy code remains in place; the final cutover removes those legacy modules and restores a clean whole-project typecheck.
+
+- [x] **Step 2: Install exact capability dependencies**
 
 Run:
 
@@ -49,7 +51,7 @@ npm install --save-dev @opennextjs/cloudflare wrangler @cloudflare/vitest-pool-w
 Expected: lockfile contains the new packages. Keep legacy runtime dependencies
 until the corresponding old code is removed in Plan 4.
 
-- [ ] **Step 3: Add scripts and minimal Worker configs**
+- [x] **Step 3: Add scripts and minimal Worker configs**
 
 Add these scripts to `package.json`:
 
@@ -75,13 +77,13 @@ export default defineCloudflareConfig();
 
 Each Wrangler config must set `compatibility_date` to `2026-08-02`, enable `nodejs_compat`, enable observability, and point to its exact entrypoint. Bindings are added in later plans.
 
-- [ ] **Step 4: Verify configuration parsing**
+- [x] **Step 4: Verify configuration parsing**
 
 Run: `npx wrangler deploy --dry-run --config wrangler.core.jsonc`
 
 Expected: Wrangler parses the config; a missing entrypoint is the only acceptable failure until Task 4.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit** (`4181c55`)
 
 ```powershell
 git add package.json package-lock.json open-next.config.ts wrangler.*.jsonc
@@ -99,7 +101,7 @@ git commit -m "build: add Cloudflare worker toolchain"
 - Produces enums `DeliveryStatus`, `JobKind`, `JobStatus`, `EventSource`, `OperationalEventSource`, `OperationalEventLevel`.
 - Produces models `InstagramAccount`, `Automation`, `ProcessedEvent`, `DmLog`, `TrackedLink`, `LinkClick`, `FollowerSnapshot`, `DailyAggregate`, `OperationalEvent`, `JobRun`.
 
-- [ ] **Step 1: Write the failing schema contract test**
+- [x] **Step 1: Write the failing schema contract test**
 
 The test reads `prisma/schema.cf-native.prisma` and asserts removed model names are absent, `workspaceId` is absent, `requireFollowBeforeFreebie Boolean @default(false)` exists, and every retained model listed above exists.
 
@@ -107,7 +109,7 @@ Run: `npx vitest run __tests__/schema-contract.test.ts`
 
 Expected: FAIL because the current schema still contains workspace and NextAuth models.
 
-- [ ] **Step 2: Replace the schema**
+- [x] **Step 2: Replace the schema**
 
 Copy retained domain fields into the parallel schema, set its generator output
 to `../app/generated/cf-native`, and remove all workspace/user relations. Keep
@@ -143,7 +145,7 @@ model DailyAggregate {
 
 Use a `DeliveryStatus` enum containing `QUEUED`, `PROCESSING`, `SENT`, `SKIPPED`, `RETRYING`, and `FAILED`. Add indexes for retention queries on every detailed log timestamp.
 
-- [ ] **Step 3: Generate the fresh migration and client**
+- [x] **Step 3: Generate the fresh migration and client**
 
 Run:
 
@@ -154,7 +156,7 @@ npx prisma generate --schema prisma/schema.cf-native.prisma
 
 Expected: one initial SQL migration and generated Prisma client without removed workspace types.
 
-- [ ] **Step 4: Run schema test and validation**
+- [x] **Step 4: Run schema test and validation**
 
 Run: `npx prisma validate --schema prisma/schema.cf-native.prisma && npx vitest run __tests__/schema-contract.test.ts`
 
