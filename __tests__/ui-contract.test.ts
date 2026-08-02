@@ -65,3 +65,25 @@ describe("responsive shell and login", () => {
     expect(form).toContain('name="eye"');
   });
 });
+
+describe("analytics hierarchy", () => {
+  it("gives the dashboard a semantic heading and primary campaign action", () => {
+    const dashboard = source("app/(dashboard)/dashboard/page.tsx");
+    expect(dashboard).toContain("app-page-title");
+    expect(dashboard).toContain("Create campaign");
+    expect(dashboard).toContain('name="plus"');
+  });
+
+  it("uses the canonical follower chart on overview", () => {
+    const overview = source("app/(dashboard)/overview/page.tsx");
+    expect(overview).toContain('import FollowerChart');
+    expect(overview).toContain("<FollowerChart");
+  });
+
+  it("brands public reports without private navigation", () => {
+    const report = source("app/reports/[shareSlug]/page.tsx");
+    expect(report).toContain("OpenReply");
+    expect(report).toContain("Public campaign report");
+    expect(report).toContain("app-page-title");
+  });
+});

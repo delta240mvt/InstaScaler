@@ -31,9 +31,9 @@ export interface FollowerChartPoint {
 
 // Colors read against the light chart surface (#ffffff): the accent line clears
 // 3:1 contrast and grid/axis text match the muted/border tokens. See globals.css.
-const SERIES_COLOR = "#f97316";
-const GRID_COLOR = "#e4e4e7";
-const AXIS_TEXT = "#71717a";
+const SERIES_COLOR = "#5b5ce2";
+const GRID_COLOR = "#e4e7ef";
+const AXIS_TEXT = "#687286";
 
 function formatCompact(n: number): string {
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -95,7 +95,7 @@ export default function FollowerChart({
     data.length > 1 ? data[data.length - 1].followers - data[0].followers : null;
 
   return (
-    <div className="panel rounded p-4 sm:p-6">
+    <div className="app-card min-w-0 p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-foreground">
@@ -120,7 +120,7 @@ export default function FollowerChart({
           <button
             type="button"
             onClick={() => setShowTable((v) => !v)}
-            className="rounded border border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-border-hover hover:text-foreground"
+            className="app-button app-button-secondary min-h-10 px-3 text-xs"
           >
             {showTable ? "Show chart" : "Show table"}
           </button>
@@ -128,7 +128,7 @@ export default function FollowerChart({
       </div>
 
       {data.length < 2 ? (
-        <div className="mt-6 rounded border border-border bg-surface/60 p-6 text-center">
+        <div className="mt-6 rounded-2xl border border-border bg-surface-subtle p-6 text-center">
           <p className="text-sm text-foreground">Collecting follower history</p>
           <p className="mt-1 text-sm text-muted">
             {data.length === 0

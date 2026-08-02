@@ -130,23 +130,23 @@ git commit -m "feat: polish navigation and login UIX"
 - Dashboard and report API shapes remain unchanged.
 - `FollowerChart` retains its existing public props.
 
-- [ ] **Step 1: Add page hierarchy contracts**
+- [x] **Step 1: Add page hierarchy contracts**
 
 Assert dashboard has a primary campaign CTA and semantic page heading, overview uses the shared follower chart, and public reports use the branded public shell.
 
-- [ ] **Step 2: Run the contract test and confirm failure**
+- [x] **Step 2: Run the contract test and confirm failure**
 
 Run: `npx vitest run __tests__/ui-contract.test.ts`
 
-- [ ] **Step 3: Recompose dashboard and overview**
+- [x] **Step 3: Recompose dashboard and overview**
 
 Create a clear welcome block, account context, premium metric grid, balanced chart/activity layout, purposeful empty states and shaped skeletons. Convert follower history to the chart component with mobile horizontal safety.
 
-- [ ] **Step 4: Polish public reports**
+- [x] **Step 4: Polish public reports**
 
 Apply the same typography, cards, status and responsive spacing without administrator navigation or private actions.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `npx vitest run __tests__/ui-contract.test.ts __tests__/core-read-models.test.ts && npm run typecheck && npm run lint`
 
