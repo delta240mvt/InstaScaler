@@ -19,7 +19,7 @@ export function createCoreApp(options?: { db?: AutomationStore & AccountDb }) {
   app.route("/", webhookRoutes());
   app.use("/api/*", requireSameOrigin);
   app.post("/api/auth/login", async (context) => {
-    const body = await context.req.json<{ login?: unknown; password?: unknown }>().catch(() => ({}));
+    const body: { login?: unknown; password?: unknown } = await context.req.json<{ login?: unknown; password?: unknown }>().catch(() => ({}));
     const throttle = context.env.LOGIN_THROTTLE.get(context.env.LOGIN_THROTTLE.idFromName(context.req.header("cf-connecting-ip") ?? "unknown"));
     const credentialsValid = typeof body.login === "string" && typeof body.password === "string" && body.login === context.env.ADMIN_LOGIN && await verifyAdminPassword(body.password, context.env.ADMIN_PASSWORD_PEPPER, context.env.ADMIN_PASSWORD_VERIFIER);
     const result = await throttle.checkAndRecord(credentialsValid);

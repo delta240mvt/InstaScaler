@@ -59,18 +59,18 @@ export async function listAutomations(db: AutomationStore, instagramAccountId?: 
   return db.automation.findMany({ where: instagramAccountId && instagramAccountId !== "all" ? { instagramAccountId } : {}, orderBy: { createdAt: "desc" }, include: { trackedLinks: true, instagramAccount: { select: { username: true, instagramId: true } } } });
 }
 
-export async function createAutomation(db: Pick<AutomationStore, "automation">, input: AutomationInput) {
+export async function createAutomation(db: { automation: Pick<AutomationStore["automation"], "create"> }, input: AutomationInput) {
   return db.automation.create({ data: normalizeAutomationInput(input) });
 }
 
-export async function updateAutomation(db: Pick<AutomationStore, "automation">, id: string, input: Partial<AutomationInput>) {
+export async function updateAutomation(db: { automation: Pick<AutomationStore["automation"], "update"> }, id: string, input: Partial<AutomationInput>) {
   return db.automation.update({ where: { id }, data: input });
 }
 
-export async function deleteAutomation(db: Pick<AutomationStore, "automation">, id: string) {
+export async function deleteAutomation(db: { automation: Pick<AutomationStore["automation"], "delete"> }, id: string) {
   return db.automation.delete({ where: { id } });
 }
 
-export async function importAutomations(db: Pick<AutomationStore, "automation">, rows: AutomationInput[]) {
+export async function importAutomations(db: { automation: Pick<AutomationStore["automation"], "create"> }, rows: AutomationInput[]) {
   return Promise.all(rows.map((row) => createAutomation(db, row)));
 }

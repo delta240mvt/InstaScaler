@@ -1,7 +1,7 @@
 const encoder = new TextEncoder();
 
 export function encodeUtf8(value: string): Uint8Array {
-  return encoder.encode(value);
+  return encoder.encode(value) as Uint8Array<ArrayBuffer>;
 }
 
 export function encodeBase64url(value: Uint8Array): string {
@@ -31,10 +31,10 @@ export function constantTimeEqual(left: Uint8Array, right: Uint8Array): boolean 
 export async function hmac(key: string, value: string): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    encodeUtf8(key),
+    encodeUtf8(key) as BufferSource,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
-  return new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, encodeUtf8(value)));
+  return new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, encodeUtf8(value) as BufferSource));
 }

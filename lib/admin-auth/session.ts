@@ -17,8 +17,9 @@ export async function verifySessionToken(token: string, now: number, signingKey:
   if (!payloadBytes) return null;
   try {
     const payload = JSON.parse(new TextDecoder().decode(payloadBytes)) as Partial<SessionPayload>;
-    if (payload.v !== 1 || !Number.isSafeInteger(payload.exp) || payload.exp <= now) return null;
-    return { exp: payload.exp };
+    const exp = payload.exp;
+    if (payload.v !== 1 || typeof exp !== "number" || !Number.isSafeInteger(exp) || exp <= now) return null;
+    return { exp };
   } catch {
     return null;
   }
