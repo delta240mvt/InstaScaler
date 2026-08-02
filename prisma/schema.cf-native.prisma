@@ -4,6 +4,8 @@
 generator client {
   provider = "prisma-client"
   output   = "../app/generated/cf-native"
+  engineType = "client"
+  runtime = "cloudflare"
 }
 
 datasource db {
