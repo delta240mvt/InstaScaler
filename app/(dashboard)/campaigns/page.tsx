@@ -414,7 +414,11 @@ export default function CampaignsPage() {
           <div
             key={auto.id}
             onClick={() => router.push(`/campaigns/${auto.id}`)}
-            className="app-card app-card-interactive cursor-pointer p-4 sm:p-5"
+            onKeyDown={(event) => { if (event.key === "Enter") router.push(`/campaigns/${auto.id}`); }}
+            role="link"
+            tabIndex={0}
+            aria-label={`Open campaign ${auto.name}`}
+            className="app-card app-card-interactive cursor-pointer p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35 sm:p-5"
           >
             {/* Wraps rather than compressing: on a phone the action buttons drop
                 to their own line instead of squeezing the campaign summary. */}
@@ -561,7 +565,7 @@ export default function CampaignsPage() {
                 {auto.postUrl && (
                   <button
                     onClick={() => void copyReelUrl(auto)}
-                    className="shrink-0 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:border-border-hover hover:text-foreground"
+                    className="app-button app-button-secondary min-h-11 shrink-0 px-3 text-xs"
                   >
                     {copiedId === auto.id ? "Copied!" : "Copy URL"}
                   </button>
@@ -572,14 +576,14 @@ export default function CampaignsPage() {
                   aria-label={`${auto.isActive ? "Pause" : "Activate"} ${auto.name}`}
                   aria-pressed={auto.isActive}
                   className={`
-                    relative w-11 h-6 rounded-full transition-colors
+                    relative h-11 w-12 rounded-full transition-colors
                     ${auto.isActive ? "bg-accent" : "bg-zinc-300"}
                   `}
                 >
                   <span
                     className={`
-                      absolute top-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm
-                      ${auto.isActive ? "left-6" : "left-1"}
+                      absolute top-3.5 h-4 w-4 rounded-full bg-white transition-transform shadow-sm
+                      ${auto.isActive ? "left-7" : "left-1"}
                     `}
                   />
                 </button>

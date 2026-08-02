@@ -270,7 +270,7 @@ export default function InboxPage() {
         )}
       </header>
 
-      <div className="app-card grid h-[calc(100dvh-13rem)] min-h-[28rem] grid-cols-1 overflow-hidden sm:grid-cols-[300px_1fr]">
+      <div className="app-card grid h-[calc(100dvh-13rem)] min-h-[20rem] grid-cols-1 overflow-hidden sm:min-h-[28rem] sm:grid-cols-[300px_1fr]">
         {/* Conversation list. On mobile it takes the full pane and is hidden
             once a thread is open (ManyChat-style); on sm+ it is always shown. */}
         <div

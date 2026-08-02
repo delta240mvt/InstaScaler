@@ -116,6 +116,8 @@ function Toggle({
     <button
       type="button"
       onClick={onToggle}
+      aria-label={on ? "Disable option" : "Enable option"}
+      aria-pressed={on}
       className={`relative h-11 w-12 shrink-0 rounded-full transition-colors ${
         on ? "bg-accent" : "bg-zinc-300"
       }`}

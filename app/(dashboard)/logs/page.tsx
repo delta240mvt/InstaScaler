@@ -224,7 +224,7 @@ export default function LogsPage() {
                   setLoading(true);
                   setPage(page - 1);
                 }}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-muted border border-border hover:text-foreground hover:border-border-hover transition-all disabled:opacity-30 disabled:pointer-events-none"
+                className="app-button app-button-secondary min-h-11 px-3 text-xs disabled:pointer-events-none disabled:opacity-30"
               >
                 Previous
               </button>
@@ -237,7 +237,7 @@ export default function LogsPage() {
                   setLoading(true);
                   setPage(page + 1);
                 }}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-muted border border-border hover:text-foreground hover:border-border-hover transition-all disabled:opacity-30 disabled:pointer-events-none"
+                className="app-button app-button-secondary min-h-11 px-3 text-xs disabled:pointer-events-none disabled:opacity-30"
               >
                 Next
               </button>
