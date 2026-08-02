@@ -18,7 +18,6 @@ export type LoginThrottleBinding = {
 export type CoreEnv = DatabaseEnv & {
   APP_BASE_URL: string;
   ADMIN_LOGIN: string;
-  ADMIN_SESSION_SECRET: string;
   ADMIN_PASSWORD_PEPPER: string;
   ADMIN_PASSWORD_VERIFIER: string;
   META_APP_SECRET: string;
@@ -35,8 +34,10 @@ export type CoreEnv = DatabaseEnv & {
 };
 
 export type JobsEnv = DatabaseEnv & {
-  META_APP_SECRET: string;
+  ENCRYPTION_KEY: string;
+  APP_BASE_URL: string;
   EVENT_JOURNAL: JournalBucket;
+  INSTAGRAM_EVENTS: QueueBinding;
   ACCOUNT_RATE_LIMITER: {
     idFromName(name: string): unknown;
     get(id: unknown): { reserve(input: { amount: number; now: number }): Promise<{ allowed: boolean; retryAt: number | null; remaining: number }> };

@@ -9,15 +9,16 @@ export function logRoutes(getDb: (env: CoreEnv) => LogDb) {
   const app = new Hono<{ Bindings: CoreEnv }>();
   app.use("/logs", requireAdmin);
   app.get("/logs", async (context) => {
-    const page = normalizePagination({ page: context.req.query("page"), pageSize: context.req.query("pageSize") });
+    const page = normalizePagination({ page: context.req.query("page"), pageSize: context.req.query("pageSize") ?? context.req.query("limit") });
     const instagramAccountId = context.req.query("instagramAccountId");
-    const where = instagramAccountId && instagramAccountId !== "all" ? { instagramAccountId } : {};
+    const status = context.req.query("status");
+    const where = { ...(instagramAccountId && instagramAccountId !== "all" ? { instagramAccountId } : {}), ...(status && status !== "ALL" ? { status } : {}) };
     const db = getDb(context.env);
     const [items, total] = await Promise.all([
       db.dmLog.findMany({ where, orderBy: { createdAt: "desc" }, skip: page.skip, take: page.pageSize, include: { automation: { select: { id: true, name: true } }, instagramAccount: { select: { id: true, username: true } } } }),
       db.dmLog.count({ where }),
     ]);
-    return context.json({ data: { items, total, page: page.page, pageSize: page.pageSize } });
+    return context.json({ data: { items, total, page: page.page, pageSize: page.pageSize, logs: items, pagination: { page: page.page, limit: page.pageSize, total, totalPages: Math.ceil(total / page.pageSize) } } });
   });
   return app;
 }

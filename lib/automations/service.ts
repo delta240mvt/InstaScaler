@@ -16,6 +16,9 @@ const automationInputSchema = z.object({
   openingDmMessage: z.string().max(1000).nullable().optional(),
   openingDmButtonLabel: z.string().max(64).nullable().optional(),
   linkButtonLabel: z.string().max(20).nullable().optional(),
+  trackedDestinationUrl: z.union([z.literal(""), z.string().url()]).default(""),
+  secondaryDestinationUrl: z.union([z.literal(""), z.string().url()]).default(""),
+  secondaryButtonLabel: z.string().max(20).nullable().optional(),
   requireFollowBeforeFreebie: z.boolean().default(false),
   followPromptMessage: z.string().max(1000).nullable().optional(),
   followPromptButtonLabel: z.string().max(20).nullable().optional(),
@@ -35,12 +38,20 @@ const automationInputSchema = z.object({
 export type AutomationInput = z.input<typeof automationInputSchema>;
 export type AutomationStore = { automation: { findMany(args: unknown): Promise<unknown[]>; create(args: { data: unknown }): Promise<unknown>; update(args: unknown): Promise<unknown>; delete(args: unknown): Promise<unknown> } };
 
+function linkWrites(value: { trackedDestinationUrl: string; secondaryDestinationUrl: string; linkButtonLabel?: string | null; secondaryButtonLabel?: string | null }) {
+  return [
+    value.trackedDestinationUrl ? { slug: crypto.randomUUID().replaceAll("-", ""), destinationUrl: value.trackedDestinationUrl, label: value.linkButtonLabel || null } : null,
+    value.secondaryDestinationUrl ? { slug: crypto.randomUUID().replaceAll("-", ""), destinationUrl: value.secondaryDestinationUrl, label: value.secondaryButtonLabel || null } : null,
+  ].filter((link): link is NonNullable<typeof link> => Boolean(link));
+}
+
 export function normalizeAutomationInput(input: AutomationInput) {
   const value = automationInputSchema.parse(input);
+  const automation = Object.fromEntries(Object.entries(value).filter(([key]) => !["trackedDestinationUrl", "secondaryDestinationUrl", "secondaryButtonLabel"].includes(key)));
   const isSpecificPost = !value.pendingNextReel && !value.matchAnyPost;
   const publicReplyMessages = value.publicReplyEnabled ? value.publicReplyMessages.map((message) => message.trim()).filter(Boolean) : [];
   return {
-    ...value,
+    ...automation,
     postId: isSpecificPost ? value.postId ?? null : null,
     postUrl: isSpecificPost ? value.postUrl ?? null : null,
     keywords: value.matchAnyWord ? [] : value.keywords,
@@ -52,11 +63,26 @@ export function normalizeAutomationInput(input: AutomationInput) {
     followUpDelayMinutes: value.followUpEnabled ? value.followUpDelayMinutes : 0,
     publicReplyMessages,
     publicReplyMessage: publicReplyMessages[0] ?? null,
+    trackedLinks: { create: linkWrites(value) },
   };
 }
 
-export async function listAutomations(db: AutomationStore, instagramAccountId?: string) {
-  return db.automation.findMany({ where: instagramAccountId && instagramAccountId !== "all" ? { instagramAccountId } : {}, orderBy: { createdAt: "desc" }, include: { trackedLinks: true, instagramAccount: { select: { username: true, instagramId: true } } } });
+export async function listAutomations(db: AutomationStore, instagramAccountId?: string, baseUrl?: string) {
+  const rows = await db.automation.findMany({ where: instagramAccountId && instagramAccountId !== "all" ? { instagramAccountId } : {}, orderBy: { createdAt: "desc" }, include: { trackedLinks: { include: { _count: { select: { clicks: true } } } }, instagramAccount: { select: { username: true, instagramId: true } }, dmLogs: { select: { status: true, matchedKeyword: true } }, _count: { select: { dmLogs: true } } } });
+  return rows.map((raw) => {
+    const row = raw as Record<string, unknown> & { dmLogs?: Array<{ status: string; matchedKeyword: string | null }>; trackedLinks?: Array<Record<string, unknown> & { _count?: { clicks: number } }> };
+    const logs = row.dmLogs ?? [];
+    const sent = logs.filter((log) => log.status === "SENT").length;
+    const skipped = logs.filter((log) => log.status === "SKIPPED").length;
+    const failed = logs.filter((log) => log.status === "FAILED").length;
+    const clicks = (row.trackedLinks ?? []).reduce((total, link) => total + (link._count?.clicks ?? 0), 0);
+    const keywords = new Map<string, number>();
+    for (const log of logs) if (log.matchedKeyword) keywords.set(log.matchedKeyword, (keywords.get(log.matchedKeyword) ?? 0) + 1);
+    const { dmLogs: _dmLogs, ...automation } = row;
+    void _dmLogs;
+    const trackedLinks = (row.trackedLinks ?? []).map((link) => ({ ...link, trackedUrl: baseUrl && typeof link.slug === "string" ? `${baseUrl.replace(/\/$/, "")}/r/${link.slug}` : undefined }));
+    return { ...automation, trackedLinks, reportUrl: null, analytics: { sent, skipped, failed, clicks, ctr: sent ? Math.round(clicks / sent * 1000) / 10 : 0, topKeywords: [...keywords].sort((left, right) => right[1] - left[1]).slice(0, 5).map(([keyword, count]) => ({ keyword, count })) } };
+  });
 }
 
 export async function createAutomation(db: { automation: Pick<AutomationStore["automation"], "create"> }, input: AutomationInput) {
@@ -64,7 +90,9 @@ export async function createAutomation(db: { automation: Pick<AutomationStore["a
 }
 
 export async function updateAutomation(db: { automation: Pick<AutomationStore["automation"], "update"> }, id: string, input: Partial<AutomationInput>) {
-  return db.automation.update({ where: { id }, data: input });
+  const normalized = normalizeAutomationInput(input as AutomationInput);
+  const links = normalized.trackedLinks.create;
+  return db.automation.update({ where: { id }, data: { ...normalized, trackedLinks: { deleteMany: {}, create: links } } });
 }
 
 export async function deleteAutomation(db: { automation: Pick<AutomationStore["automation"], "delete"> }, id: string) {

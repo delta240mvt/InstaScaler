@@ -1,307 +1,55 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { getCampaignReportBySlug } from "@/lib/reports/data";
+"use client";
 
-type ReportPageProps = {
-  params: Promise<{ shareSlug: string }>;
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
+import { createCoreApi } from "@/lib/core-api/client";
+
+type PublicReport = {
+  name: string; goal: string | null; createdAt: string;
+  instagramAccount: { username: string; name: string | null };
+  trackedLinks: Array<{ id: string; slug: string; label: string | null; destinationUrl: string; _count: { clicks: number } }>;
+  dmLogs: Array<{ status: string; matchedKeyword: string | null; createdAt: string }>;
 };
 
-function formatDate(date: Date | null) {
-  if (!date) return "No sends yet";
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function Metric({ label, value }: { label: string; value: number | string }) {
+  return <div className="panel rounded p-5"><p className="text-xs uppercase tracking-wide text-muted">{label}</p><p className="mt-2 text-3xl font-bold">{value}</p></div>;
 }
 
-function MetricCard({
-  label,
-  value,
-  helper,
-}: {
-  label: string;
-  value: string | number;
-  helper: string;
-}) {
+export default function ReportPage() {
+  const { shareSlug } = useParams<{ shareSlug: string }>();
+  const [report, setReport] = useState<PublicReport | null>(null);
+  const [missing, setMissing] = useState(false);
+  useEffect(() => {
+    createCoreApi({ baseUrl: "" }).reports.get(shareSlug)
+      .then((payload) => setReport(payload.data as PublicReport))
+      .catch(() => setMissing(true));
+  }, [shareSlug]);
+  const metrics = useMemo(() => {
+    const logs = report?.dmLogs ?? [];
+    const sent = logs.filter((item) => item.status === "SENT").length;
+    const skipped = logs.filter((item) => item.status === "SKIPPED").length;
+    const failed = logs.filter((item) => item.status === "FAILED").length;
+    const clicks = (report?.trackedLinks ?? []).reduce((sum, link) => sum + link._count.clicks, 0);
+    return { sent, skipped, failed, clicks, ctr: sent ? Math.round(clicks / sent * 1000) / 10 : 0 };
+  }, [report]);
+
+  if (missing) return <main className="mx-auto max-w-2xl px-6 py-20"><h1 className="text-2xl font-bold">Report not found</h1></main>;
+  if (!report) return <main className="mx-auto max-w-6xl px-6 py-20 text-muted">Loading report…</main>;
   return (
-    <div className="border border-white/10 bg-white/[0.035] p-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-        {label}
-      </p>
-      <p className="mt-3 text-3xl font-black tracking-tight text-white">
-        {value}
-      </p>
-      <p className="mt-2 text-xs leading-5 text-zinc-400">{helper}</p>
-    </div>
-  );
-}
-
-export async function generateMetadata({
-  params,
-}: ReportPageProps): Promise<Metadata> {
-  const { shareSlug } = await params;
-  const report = await getCampaignReportBySlug(shareSlug);
-
-  if (!report) {
-    return {
-      title: "Report Not Found",
-      robots: { index: false, follow: false },
-    };
-  }
-
-  return {
-    title: `${report.campaign.name} Campaign Report`,
-    description: `Read-only Instagram comment-to-DM campaign report for ${report.campaign.name}.`,
-    robots: { index: false, follow: false },
-  };
-}
-
-export default async function ReportPage({ params }: ReportPageProps) {
-  const { shareSlug } = await params;
-  const report = await getCampaignReportBySlug(shareSlug);
-
-  if (!report) {
-    notFound();
-  }
-
-  const maxDaily = Math.max(
-    ...report.daily.map((day) => Math.max(day.sent, day.clicks)),
-    1
-  );
-
-  return (
-    <main className="min-h-screen bg-background text-foreground">
-      <section className="border-b border-white/10 bg-zinc-950/70">
-        <div className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-wide text-cyan-200">
-                Client campaign report
-              </p>
-              <h1 className="mt-4 max-w-3xl text-4xl font-black leading-tight text-white sm:text-5xl">
-                {report.campaign.name}
-              </h1>
-              <div className="mt-5 flex flex-wrap items-center gap-2 text-sm text-zinc-400">
-                <span>@{report.campaign.instagramUsername}</span>
-                {report.campaign.goal && (
-                  <>
-                    <span>·</span>
-                    <span>{report.campaign.goal}</span>
-                  </>
-                )}
-                <span>·</span>
-                <span>
-                  {report.campaign.isActive ? "Active campaign" : "Paused campaign"}
-                </span>
-              </div>
-            </div>
-
-            <div className="border border-white/10 bg-white/[0.035] p-4 text-sm text-zinc-300 md:min-w-64">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Workspace
-              </p>
-              <p className="mt-2 font-bold text-white">{report.workspace.name}</p>
-              <p className="mt-4 text-xs text-zinc-500">
-                Generated {formatDate(report.generatedAt)}
-              </p>
-              {report.branded && (
-                <Link
-                  href="/"
-                  className="mt-4 inline-flex items-center justify-center border border-cyan-200/20 bg-cyan-300/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:border-cyan-200/40"
-                >
-                  Powered by OpenReply
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
+    <main className="mx-auto min-h-screen max-w-6xl space-y-8 px-5 py-10 sm:px-8">
+      <header>
+        <p className="text-sm font-semibold uppercase tracking-wide text-accent">Public campaign report</p>
+        <h1 className="mt-3 text-4xl font-black">{report.name}</h1>
+        <p className="mt-2 text-muted">@{report.instagramAccount.username}{report.goal ? ` · ${report.goal}` : ""}</p>
+      </header>
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <Metric label="DMs sent" value={metrics.sent} /><Metric label="Skipped" value={metrics.skipped} />
+        <Metric label="Failed" value={metrics.failed} /><Metric label="Clicks" value={metrics.clicks} />
+        <Metric label="CTR" value={`${metrics.ctr}%`} />
       </section>
-
-      <section className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-6 lg:px-8">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <MetricCard
-            label="DMs sent"
-            value={report.metrics.sent}
-            helper="Private replies successfully sent."
-          />
-          <MetricCard
-            label="Skipped"
-            value={report.metrics.skipped}
-            helper="Duplicates, limits, or no-send outcomes."
-          />
-          <MetricCard
-            label="Failed"
-            value={report.metrics.failed}
-            helper="Replies that need operational review."
-          />
-          <MetricCard
-            label="Clicks"
-            value={report.metrics.clicks}
-            helper="Tracked link visits from replies."
-          />
-          <MetricCard
-            label="CTR"
-            value={`${report.metrics.ctr}%`}
-            helper="Clicks divided by sent replies."
-          />
-        </div>
-
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
-          <section className="border border-white/10 bg-white/[0.035] p-4 sm:p-6">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-xl font-black text-white">
-                  Last 7 Days
-                </h2>
-                <p className="mt-2 text-sm text-zinc-400">
-                  Sent replies and tracked clicks by day.
-                </p>
-              </div>
-              <p className="text-xs text-zinc-500">
-                Last send: {formatDate(report.metrics.latestSentAt)}
-              </p>
-            </div>
-            <div className="mt-8 grid h-56 grid-cols-7 items-end gap-1.5 sm:gap-3">
-              {report.daily.map((day) => (
-                <div key={day.date} className="flex h-full flex-col justify-end gap-2">
-                  <div className="flex min-h-0 flex-1 items-end gap-1">
-                    <div
-                      className="w-full bg-cyan-300/75"
-                      style={{
-                        height: `${Math.max((day.sent / maxDaily) * 100, 4)}%`,
-                      }}
-                      title={`${day.sent} sent`}
-                    />
-                    <div
-                      className="w-full bg-emerald-300/75"
-                      style={{
-                        height: `${Math.max((day.clicks / maxDaily) * 100, 4)}%`,
-                      }}
-                      title={`${day.clicks} clicks`}
-                    />
-                  </div>
-                  <p className="truncate text-center text-[11px] text-zinc-500">
-                    {day.date}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 flex flex-wrap gap-4 text-xs text-zinc-400">
-              <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-2 bg-cyan-300" />
-                Sent replies
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-2 bg-emerald-300" />
-                Link clicks
-              </span>
-            </div>
-          </section>
-
-          <aside className="space-y-6">
-            <section className="border border-white/10 bg-white/[0.035] p-4 sm:p-6">
-              <h2 className="text-xl font-black text-white">Top Keywords</h2>
-              <div className="mt-5 space-y-3">
-                {report.topKeywords.length === 0 && (
-                  <p className="text-sm text-zinc-400">
-                    No matched keyword data yet.
-                  </p>
-                )}
-                {report.topKeywords.map((keyword) => (
-                  <div
-                    key={keyword.keyword}
-                    className="flex items-center justify-between gap-4 border-b border-white/10 pb-3 last:border-0 last:pb-0"
-                  >
-                    <span className="text-sm font-semibold text-white">
-                      {keyword.keyword}
-                    </span>
-                    <span className="text-sm text-zinc-400">
-                      {keyword.count}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="border border-white/10 bg-white/[0.035] p-4 sm:p-6">
-              <h2 className="text-xl font-black text-white">Tracked Links</h2>
-              <div className="mt-5 space-y-3">
-                {report.trackedLinks.length === 0 && (
-                  <p className="text-sm text-zinc-400">
-                    This campaign does not have a tracked link.
-                  </p>
-                )}
-                {report.trackedLinks.map((link) => (
-                  <div
-                    key={link.slug}
-                    className="flex items-center justify-between gap-4"
-                  >
-                    <span className="min-w-0 truncate text-sm text-zinc-300">
-                      {link.destinationHost}
-                    </span>
-                    <span className="text-sm font-semibold text-white">
-                      {link.clicks}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </aside>
-        </div>
-
-        <section className="mt-8 border border-white/10 bg-white/[0.035] p-4 sm:p-6">
-          <h2 className="text-xl font-black text-white">Campaign Setup</h2>
-          <div className="mt-5 grid gap-5 md:grid-cols-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Keywords
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {report.campaign.keywords.map((keyword) => (
-                  <span
-                    key={keyword}
-                    className="border border-white/10 bg-zinc-950 px-2 py-1 text-xs font-semibold text-zinc-300"
-                  >
-                    {keyword}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Created
-              </p>
-              <p className="mt-3 text-sm text-zinc-300">
-                {formatDate(report.campaign.createdAt)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Source post
-              </p>
-              {report.campaign.postUrl ? (
-                <a
-                  href={report.campaign.postUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-3 inline-flex text-sm font-semibold text-cyan-200 transition hover:text-cyan-100"
-                >
-                  View Instagram post
-                </a>
-              ) : (
-                <p className="mt-3 text-sm text-zinc-400">Not attached</p>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {report.branded && (
-          <footer className="mt-8 border-t border-white/10 pt-6 text-center text-xs text-zinc-500">
-            Built with OpenReply, the Instagram comment-to-DM campaign OS.
-          </footer>
-        )}
+      <section className="panel rounded p-5">
+        <h2 className="text-lg font-semibold">Tracked links</h2>
+        <div className="mt-4 space-y-3">{report.trackedLinks.length ? report.trackedLinks.map((link) => <div key={link.id} className="flex justify-between border-b border-border pb-3"><span className="truncate text-muted">{link.label || link.destinationUrl}</span><strong>{link._count.clicks}</strong></div>) : <p className="text-sm text-muted">No tracked links.</p>}</div>
       </section>
     </main>
   );

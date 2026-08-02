@@ -42,7 +42,7 @@ interface LoadedCampaign {
   openingDmMessage: string | null;
   openingDmButtonLabel: string | null;
   linkButtonLabel: string | null;
-  requireFollow: boolean;
+  requireFollowBeforeFreebie: boolean;
   followPromptMessage: string | null;
   followPromptButtonLabel: string | null;
   followUpEnabled: boolean;
@@ -280,7 +280,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
         setSecondaryDestinationUrl(secondLink?.destinationUrl ?? "");
         setSecondaryButtonLabel(secondLink?.label ?? "Open link");
         setSecondLinkOpen(Boolean(secondLink?.destinationUrl));
-        setRequireFollow(c.requireFollow ?? false);
+        setRequireFollow(c.requireFollowBeforeFreebie ?? false);
         setFollowPromptMessage(c.followPromptMessage ?? "");
         setFollowPromptButtonLabel(
           c.followPromptButtonLabel ?? "i'm following"
@@ -419,7 +419,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
       linkButtonLabel: linkButtonLabel.trim() || "Open link",
       secondaryDestinationUrl: secondaryDestinationUrl.trim() || "",
       secondaryButtonLabel: secondaryButtonLabel.trim() || "Open link",
-      requireFollow,
+      requireFollowBeforeFreebie: requireFollow,
       followPromptMessage: requireFollow ? followPromptMessage.trim() : "",
       followPromptButtonLabel: requireFollow
         ? followPromptButtonLabel.trim() || "i'm following"
@@ -853,9 +853,8 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
                   maxLength={20}
                 />
                 <p className="text-xs text-muted">
-                  We send the link only after they tap the button and Instagram
-                  confirms the follow. If it can&apos;t be verified, we send it
-                  anyway.
+                  We send the link only after they tap the button and Meta verifies
+                  that they follow the connected Instagram account.
                 </p>
               </div>
             )}

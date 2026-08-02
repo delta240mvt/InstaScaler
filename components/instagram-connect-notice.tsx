@@ -27,13 +27,13 @@ const MESSAGES: Record<string, { tone: Tone; title: string; detail: string }> = 
     tone: "error",
     title: "Not permitted",
     detail:
-      "Only workspace owners and admins can connect an Instagram account.",
+      "The administrator session is required to connect an Instagram account.",
   },
   already_connected: {
     tone: "warning",
     title: "Account already connected",
     detail:
-      "That Instagram account is connected to another workspace. Disconnect it there first, or connect a different account.",
+      "That Instagram account is already connected. Disconnect it first, or connect a different account.",
   },
 };
 

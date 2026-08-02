@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const schemaPath = resolve(process.cwd(), "prisma/schema.cf-native.prisma");
+const schemaPath = resolve(process.cwd(), "prisma/schema.prisma");
 
 describe("CF-native database schema", () => {
   it("keeps only the single-owner domain and its required models", async () => {

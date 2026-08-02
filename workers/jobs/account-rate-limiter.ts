@@ -1,19 +1,39 @@
 import { reserveAccountCapacity } from "@/lib/jobs/account-rate-limit";
 
-type State = { storage: { get<T>(key: string): Promise<T | undefined>; put<T>(key: string, value: T): Promise<void>; delete(key: string): Promise<boolean>; setAlarm(timestamp: number): Promise<void> } };
+type Sql = { exec<T extends Record<string, unknown>>(query: string, ...params: unknown[]): Iterable<T> };
+type State = {
+  blockConcurrencyWhile<T>(callback: () => Promise<T>): Promise<T>;
+  storage: { sql: Sql; setAlarm(timestamp: number): Promise<void> };
+};
 
 export class AccountRateLimiter {
-  constructor(private readonly state: State, _env: unknown) {}
-
-  async reserve(input: { amount: number; now: number }): Promise<{ allowed: boolean; retryAt: number | null; remaining: number }> {
-    const hour = new Date(input.now).toISOString().slice(0, 13);
-    const current = await this.state.storage.get<{ hour: string; used: number }>("capacity");
-    const used = current?.hour === hour ? current.used : 0;
-    const result = reserveAccountCapacity({ used, limit: 200, amount: input.amount, now: input.now });
-    if (result.allowed) await this.state.storage.put("capacity", { hour, used: used + input.amount });
-    if (result.retryAt) await this.state.storage.setAlarm(result.retryAt + 60_000);
-    return result;
+  constructor(private readonly state: State, _env: unknown) {
+    void state.blockConcurrencyWhile(async () => {
+      state.storage.sql.exec("CREATE TABLE IF NOT EXISTS capacity (hour TEXT PRIMARY KEY, used INTEGER NOT NULL)");
+    });
   }
 
-  async alarm(): Promise<void> { await this.state.storage.delete("capacity"); }
+  reserve(input: { amount: number; now: number }): Promise<{ allowed: boolean; retryAt: number | null; remaining: number }> {
+    return this.state.blockConcurrencyWhile(async () => {
+      const hour = new Date(input.now).toISOString().slice(0, 13);
+      const row = [...this.state.storage.sql.exec<{ used: number }>("SELECT used FROM capacity WHERE hour = ?", hour)][0];
+      const result = reserveAccountCapacity({ used: row?.used ?? 0, limit: 200, amount: input.amount, now: input.now });
+      if (result.allowed) {
+        this.state.storage.sql.exec(
+          "INSERT INTO capacity (hour, used) VALUES (?, ?) ON CONFLICT(hour) DO UPDATE SET used = excluded.used",
+          hour,
+          (row?.used ?? 0) + input.amount,
+        );
+      }
+      const cleanupAt = result.retryAt ?? Date.UTC(new Date(input.now).getUTCFullYear(), new Date(input.now).getUTCMonth(), new Date(input.now).getUTCDate(), new Date(input.now).getUTCHours() + 1) + 60_000;
+      await this.state.storage.setAlarm(cleanupAt);
+      return result;
+    });
+  }
+
+  alarm(): Promise<void> {
+    return this.state.blockConcurrencyWhile(async () => {
+      this.state.storage.sql.exec("DELETE FROM capacity");
+    });
+  }
 }

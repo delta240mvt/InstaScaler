@@ -13,8 +13,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AccountSelect, { type AccountOption } from "@/components/account-select";
 import { readCache, writeCache } from "@/lib/client-cache";
-import type { ConversationListItem } from "@/app/api/instagram/conversations/route";
-import type { ThreadMessage } from "@/app/api/instagram/conversations/[id]/route";
+type ConversationListItem = { id: string; contact: { id: string; username?: string }; updatedTime: string | null; lastMessage: { text: string; fromMe: boolean } | null };
+type ThreadMessage = { id: string; text: string; fromMe: boolean; createdTime: string | null; fromUsername?: string };
 
 const POLL_MS = 12_000;
 // Cached list/threads are shown instantly on revisit, then revalidated in the
@@ -214,7 +214,7 @@ export default function InboxPage() {
       id: `optimistic-${Date.now()}`,
       text,
       fromMe: true,
-      fromUsername: null,
+      fromUsername: undefined,
       createdTime: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, optimistic]);

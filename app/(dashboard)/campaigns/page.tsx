@@ -29,7 +29,7 @@ interface Campaign {
   publicReplyEnabled: boolean;
   publicReplyMessage: string | null;
   publicReplyMessages: string[];
-  requireFollow: boolean;
+  requireFollowBeforeFreebie: boolean;
   followPromptMessage: string | null;
   followPromptButtonLabel: string | null;
   isActive: boolean;
@@ -262,7 +262,7 @@ export default function CampaignsPage() {
           trackedDestinationUrl: auto.trackedLinks[0]?.destinationUrl ?? "",
           secondaryDestinationUrl: auto.trackedLinks[1]?.destinationUrl ?? "",
           secondaryButtonLabel: auto.trackedLinks[1]?.label ?? "Open link",
-          requireFollow: auto.requireFollow,
+          requireFollowBeforeFreebie: auto.requireFollowBeforeFreebie,
           followPromptMessage: auto.followPromptMessage,
           followPromptButtonLabel: auto.followPromptButtonLabel,
           wholeWordMatch: auto.wholeWordMatch,
@@ -460,7 +460,7 @@ export default function CampaignsPage() {
                       Waiting for next reel
                     </span>
                   )}
-                  {auto.requireFollow && (
+                  {auto.requireFollowBeforeFreebie && (
                     <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
                       Follow gate
                     </span>

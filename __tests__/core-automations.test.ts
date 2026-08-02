@@ -16,6 +16,24 @@ describe("single-owner automation service", () => {
     expect(created[0]).not.toHaveProperty("workspaceId");
   });
 
+  it("persists both tracked destinations as nested links", async () => {
+    const create = vi.fn(async ({ data }: { data: unknown }) => data);
+    await createAutomation({ automation: { create } }, {
+      name: "A", dmMessage: "Hi {link}", instagramAccountId: "ig", keywords: ["go"], postId: "post",
+      trackedDestinationUrl: "https://example.com/guide",
+      linkButtonLabel: "Open guide",
+      secondaryDestinationUrl: "https://example.com/bonus",
+      secondaryButtonLabel: "Open bonus",
+    });
+    expect(create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      trackedLinks: { create: [
+        expect.objectContaining({ destinationUrl: "https://example.com/guide", label: "Open guide" }),
+        expect.objectContaining({ destinationUrl: "https://example.com/bonus", label: "Open bonus" }),
+      ] },
+    }) });
+    expect((create.mock.calls[0][0].data as Record<string, unknown>)).not.toHaveProperty("trackedDestinationUrl");
+  });
+
   it("mounts CRUD and import on the documented paths", () => {
     const routes = automationRoutes(() => ({}) as never).routes.map((route) => `${route.method} ${route.path}`);
     expect(routes).toEqual(expect.arrayContaining([

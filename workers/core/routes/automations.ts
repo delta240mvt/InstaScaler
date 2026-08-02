@@ -7,7 +7,7 @@ import { requireAdmin } from "@/workers/core/middleware/auth";
 export function automationRoutes(getDb: (env: CoreEnv) => AutomationStore) {
   const app = new Hono<{ Bindings: CoreEnv }>();
   app.use("/automations*", requireAdmin);
-  app.get("/automations", async (context) => context.json({ data: await listAutomations(getDb(context.env), context.req.query("instagramAccountId")) }));
+  app.get("/automations", async (context) => context.json({ data: await listAutomations(getDb(context.env), context.req.query("instagramAccountId"), context.env.APP_BASE_URL) }));
   app.post("/automations", async (context) => {
     try { return context.json({ data: await createAutomation(getDb(context.env), await context.req.json<AutomationInput>()) }, 201); }
     catch (error) { return context.json({ error: "invalid_input", details: error instanceof ZodError ? error.flatten() : undefined }, 400); }

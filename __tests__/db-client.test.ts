@@ -9,7 +9,7 @@ vi.mock("@prisma/adapter-neon", () => ({
   PrismaNeon: mocks.PrismaNeon,
 }));
 
-vi.mock("@/app/generated/cf-native/client", () => ({
+vi.mock("@/app/generated/prisma/client", () => ({
   PrismaClient: mocks.PrismaClient,
 }));
 

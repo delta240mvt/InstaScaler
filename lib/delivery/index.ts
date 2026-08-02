@@ -4,23 +4,30 @@ export type JobResult = { status: "sent" | "skipped" | "retry" | "failed"; code:
 
 type ProcessedEventDb = {
   processedEvent: {
-    findUnique(args: unknown): Promise<unknown | null>;
+    findUnique(args: unknown): Promise<{ terminalStatus?: string | null } | null>;
     create(args: unknown): Promise<unknown>;
     update(args: unknown): Promise<unknown>;
   };
 };
 
 export async function processInstagramJob(
-  context: { db: ProcessedEventDb; load: (key: string) => Promise<unknown>; deliver: (job: InstagramJob, payload: unknown) => Promise<JobResult> },
+  context: {
+    db: ProcessedEventDb;
+    load: (key: string) => Promise<unknown>;
+    remove?: (key: string) => Promise<void>;
+    deliver: (job: InstagramJob, payload: unknown) => Promise<JobResult>;
+  },
   job: InstagramJob,
 ): Promise<JobResult> {
   const existing = await context.db.processedEvent.findUnique({ where: { externalId: job.externalId } });
-  if (existing) return { status: "skipped", code: "DUPLICATE_EVENT" };
-  await context.db.processedEvent.create({ data: { externalId: job.externalId, instagramAccountId: job.instagramAccountId, source: "WEBHOOK", kind: job.kind, r2Key: "r2Key" in job ? job.r2Key : null } });
+  if (existing && existing.terminalStatus !== "RETRYING") return { status: "skipped", code: "DUPLICATE_EVENT" };
+  if (!existing) await context.db.processedEvent.create({ data: { externalId: job.externalId, source: "r2Key" in job ? "WEBHOOK" : "INTERNAL", kind: job.kind, r2Key: "r2Key" in job ? job.r2Key : null, terminalStatus: "PROCESSING" } });
+  else await context.db.processedEvent.update({ where: { externalId: job.externalId }, data: { terminalStatus: "PROCESSING" } });
   try {
     const payload = "r2Key" in job ? await context.load(job.r2Key) : job;
     const result = await context.deliver(job, payload);
     await context.db.processedEvent.update({ where: { externalId: job.externalId }, data: { terminalStatus: result.status === "sent" ? "COMPLETED" : result.status === "retry" ? "RETRYING" : result.status === "failed" ? "FAILED" : "SKIPPED", completedAt: result.status === "retry" ? null : new Date() } });
+    if (result.status !== "retry" && "r2Key" in job && context.remove) await context.remove(job.r2Key);
     return result;
   } catch {
     await context.db.processedEvent.update({ where: { externalId: job.externalId }, data: { terminalStatus: "RETRYING" } });

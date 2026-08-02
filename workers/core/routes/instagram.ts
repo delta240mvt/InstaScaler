@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { connectInstagramAccount, disconnectInstagramAccount, listInstagramAccounts, type AccountConnectionDb, type AccountDb } from "@/lib/core/instagram-accounts";
 import type { CoreEnv } from "@/lib/cloudflare/env";
-import { exchangeInstagramCode, exchangeLongLivedToken, getInstagramProfile, getInstagramResource, subscribeInstagramWebhooks } from "@/lib/core/meta-client";
+import { exchangeInstagramCode, exchangeLongLivedToken, getInstagramProfile, getInstagramResource, sendInstagramMessage, subscribeInstagramWebhooks } from "@/lib/core/meta-client";
 import { buildAuthorizationUrl, createOAuthState, decryptToken, encryptToken, verifyOAuthState } from "@/lib/core/meta-oauth";
 import { requireAdmin } from "@/workers/core/middleware/auth";
 
@@ -53,14 +53,16 @@ export function instagramRoutes(getDb: (env: CoreEnv) => InstagramDb) {
     return context.body(null, 204);
   });
   app.get("/instagram/profile", async (context) => {
-    const account = await selectedAccount(getDb(context.env), context.req.query("instagramAccountId")) as { accessToken: string } | null;
+    const account = await selectedAccount(getDb(context.env), context.req.query("instagramAccountId")) as { instagramId: string; accessToken: string } | null;
     if (!account) return context.json({ error: "account_not_found" }, 404);
-    return context.json({ data: await getInstagramResource("me", await decryptToken(account.accessToken, context.env.ENCRYPTION_KEY), { fields: "id,user_id,username,name,profile_picture_url,followers_count,media_count" }) });
+    const profile = await getInstagramResource("me", await decryptToken(account.accessToken, context.env.ENCRYPTION_KEY), { fields: "id,user_id,username,name,profile_picture_url,followers_count,media_count" }) as Record<string, unknown>;
+    return context.json({ data: { username: profile.username, name: profile.name ?? null, profilePictureUrl: profile.profile_picture_url ?? null, followersCount: profile.followers_count ?? null } });
   });
   app.get("/instagram/posts", async (context) => {
     const account = await selectedAccount(getDb(context.env), context.req.query("instagramAccountId")) as { instagramId: string; accessToken: string } | null;
     if (!account) return context.json({ error: "account_not_found" }, 404);
-    return context.json({ data: await getInstagramResource(`${account.instagramId}/media`, await decryptToken(account.accessToken, context.env.ENCRYPTION_KEY), { fields: "id,caption,media_type,media_url,permalink,timestamp", limit: "50" }) });
+    const resource = await getInstagramResource(`${account.instagramId}/media`, await decryptToken(account.accessToken, context.env.ENCRYPTION_KEY), { fields: "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp", limit: "50" }) as { data?: unknown[] };
+    return context.json({ data: resource.data ?? [] });
   });
   app.get("/instagram/overview", async (context) => {
     const account = await selectedAccount(getDb(context.env), context.req.query("instagramAccountId")) as { instagramId: string; accessToken: string } | null;
@@ -70,12 +72,28 @@ export function instagramRoutes(getDb: (env: CoreEnv) => InstagramDb) {
   app.get("/instagram/conversations", async (context) => {
     const account = await selectedAccount(getDb(context.env), context.req.query("instagramAccountId")) as { instagramId: string; accessToken: string } | null;
     if (!account) return context.json({ error: "account_not_found" }, 404);
-    return context.json({ data: await getInstagramResource(`${account.instagramId}/conversations`, await decryptToken(account.accessToken, context.env.ENCRYPTION_KEY), { platform: "instagram", fields: "id,updated_time,participants,messages.limit(1){id,created_time,from,to,message}" }) });
+    const resource = await getInstagramResource(`${account.instagramId}/conversations`, await decryptToken(account.accessToken, context.env.ENCRYPTION_KEY), { platform: "instagram", fields: "id,updated_time,participants,messages.limit(1){id,created_time,from,to,message}" }) as { data?: Array<Record<string, unknown>> };
+    const conversations = (resource.data ?? []).map((conversation) => {
+      const participants = ((conversation.participants as { data?: Array<{ id: string; username?: string }> } | undefined)?.data ?? []);
+      const contact = participants.find((participant) => participant.id !== account.instagramId) ?? participants[0];
+      const last = (conversation.messages as { data?: Array<{ message?: string; from?: { id?: string }; created_time?: string }> } | undefined)?.data?.[0];
+      return { id: conversation.id, contact: { id: contact?.id ?? "", username: contact?.username ?? null }, updatedTime: conversation.updated_time ?? null, lastMessage: last ? { text: last.message ?? "", fromMe: last.from?.id === account.instagramId, createdTime: last.created_time ?? null } : null };
+    });
+    return context.json({ data: { conversations, account: { id: (account as { id?: string }).id, instagramId: account.instagramId } } });
   });
   app.get("/instagram/conversations/:id", async (context) => {
-    const account = await selectedAccount(getDb(context.env), context.req.query("instagramAccountId")) as { accessToken: string } | null;
+    const account = await selectedAccount(getDb(context.env), context.req.query("instagramAccountId")) as { instagramId: string; accessToken: string } | null;
     if (!account) return context.json({ error: "account_not_found" }, 404);
-    return context.json({ data: await getInstagramResource(context.req.param("id"), await decryptToken(account.accessToken, context.env.ENCRYPTION_KEY), { fields: "id,updated_time,participants,messages.limit(100){id,created_time,from,to,message}" }) });
+    const resource = await getInstagramResource(context.req.param("id"), await decryptToken(account.accessToken, context.env.ENCRYPTION_KEY), { fields: "messages.limit(100){id,created_time,from,to,message}" }) as { messages?: { data?: Array<{ id: string; message?: string; from?: { id?: string; username?: string }; created_time?: string }> } };
+    const messages = (resource.messages?.data ?? []).map((message) => ({ id: message.id, text: message.message ?? "", fromMe: message.from?.id === account.instagramId, fromUsername: message.from?.username ?? null, createdTime: message.created_time ?? null })).reverse();
+    return context.json({ data: { messages } });
+  });
+  app.post("/instagram/conversations", async (context) => {
+    const body = await context.req.json<{ instagramAccountId?: string; recipientId?: string; text?: string }>().catch(() => ({})) as { instagramAccountId?: string; recipientId?: string; text?: string };
+    if (!body.recipientId || !body.text?.trim()) return context.json({ error: "invalid_message" }, 400);
+    const account = await selectedAccount(getDb(context.env), body.instagramAccountId) as { instagramId: string; accessToken: string } | null;
+    if (!account) return context.json({ error: "account_not_found" }, 404);
+    return context.json({ data: await sendInstagramMessage(account.instagramId, await decryptToken(account.accessToken, context.env.ENCRYPTION_KEY), body.recipientId, body.text.trim()) });
   });
   return app;
 }

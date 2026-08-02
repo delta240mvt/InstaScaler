@@ -72,11 +72,11 @@ git commit -m "feat: journal Meta webhooks in R2"
 - `JobResult = { status: "sent" | "skipped" | "retry" | "failed"; code: string }`
 - Queue handler acknowledges successful/permanent outcomes and retries transient outcomes.
 
-- [ ] **Step 1: Write failing consumer tests**
+- [x] **Step 1: Write failing consumer tests**
 
 Cover first delivery, duplicate external ID, duplicate Meta side-effect key, no campaign match, disabled account, comment campaign, inbound DM campaign, public reply, postback, fallback, follow-up, transient Meta error, permanent Meta error, and Neon outage.
 
-- [ ] **Step 2: Split the current 1,200-line worker by job kind**
+- [x] **Step 2: Split the current 1,200-line worker by job kind**
 
 Each new delivery module exports one function and receives dependencies
 explicitly. Preserve existing matching, token decryption, tracked links,
@@ -84,7 +84,7 @@ public-reply variation, opening DM, next-reel, any-post, and DM keyword behavior
 Do not delete the legacy BullMQ modules until scheduled consumers have also
 been ported in Task 6.
 
-- [ ] **Step 3: Implement queue semantics**
+- [x] **Step 3: Implement queue semantics**
 
 For journal-backed message kinds: parse the contract, load the R2 envelope,
 insert/find `ProcessedEvent`, mark delivery `PROCESSING`, execute once, persist
@@ -94,7 +94,7 @@ R2 lookup. On transient failure, persist `RETRYING` and call
 `message.retry({ delaySeconds })`. On permanent failure, persist `FAILED`,
 delete any associated R2 object, and acknowledge.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `npx vitest run __tests__/jobs-consumer.test.ts __tests__/dm-worker.test.ts`
 
@@ -115,15 +115,15 @@ git commit -m "refactor: replace BullMQ with Queue consumer"
 - `checkFollowStatus(meta, instagramAccountId, userId): Promise<boolean>`
 - `deliverFollowProtectedFreebie(ctx, input): Promise<JobResult>`
 
-- [ ] **Step 1: Write failing follow-gate tests**
+- [x] **Step 1: Write failing follow-gate tests**
 
 Test gate disabled, opening prompt, user clicks without following, user follows and clicks, repeated click after success, Meta follow-check transient failure, multiple matching campaigns, and no freebie call before positive Meta confirmation.
 
-- [ ] **Step 2: Implement the gate**
+- [x] **Step 2: Implement the gate**
 
 Comment processing sends only the follow prompt when `requireFollowBeforeFreebie` is true. Postback processing calls Meta `is_user_follow_business` every attempt. A negative result sends the reminder; a positive result atomically reserves the delivery key and sends the freebie once.
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 Run: `npx vitest run __tests__/follow-gate.test.ts`
 
@@ -145,19 +145,19 @@ git commit -m "feat: enforce follow before freebie"
 - RPC `reserve(input: { amount: number; now: number }): Promise<{ allowed: boolean; retryAt: number | null; remaining: number }>`.
 - One Durable Object instance ID per Instagram account ID.
 
-- [ ] **Step 1: Rewrite tests against Durable Object behavior**
+- [x] **Step 1: Rewrite tests against Durable Object behavior**
 
 Cover atomic concurrent reservations, hourly reset, exact limit boundary, retry timestamp, separate-account isolation, and alarm cleanup.
 
-- [ ] **Step 2: Implement SQLite-backed reservations**
+- [x] **Step 2: Implement SQLite-backed reservations**
 
 Use one row per UTC hour with `used`. Execute read/check/update inside `blockConcurrencyWhile` or a SQLite transaction. Set an alarm after the active window so stale rows are deleted.
 
-- [ ] **Step 3: Integrate delivery paths**
+- [x] **Step 3: Integrate delivery paths**
 
 Reserve immediately before a Meta private/public reply. A denied reservation persists `RETRYING` and retries the Queue message at `retryAt`; it never marks the delivery permanently skipped merely because the current window is full.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `npx vitest run __tests__/rate-limiter.test.ts __tests__/jobs-consumer.test.ts`
 
@@ -178,15 +178,15 @@ git commit -m "feat: rate limit Instagram delivery with durable objects"
 - `reserveQueueJob(db, accountId, count): Promise<{ allowed: boolean; estimatedOperations: number }>`.
 - Conservative daily ceiling: 9,500 estimated Queue operations.
 
-- [ ] **Step 1: Write failing budget tests**
+- [x] **Step 1: Write failing budget tests**
 
 Cover three operations per normal message, an extra read per retry, UTC reset, 9,500 ceiling, essential versus optional jobs, and delay validation from 0 through 86,400 seconds.
 
-- [ ] **Step 2: Implement budget accounting**
+- [x] **Step 2: Implement budget accounting**
 
 Increment `DailyAggregate.queueJobs` transactionally before producing optional jobs. Always accept verified inbound events into R2; if Queue budget is exhausted, leave their envelopes for recovery after the next UTC reset. Delay follow-ups in Queue and use a deterministic external ID.
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 Run: `npx vitest run __tests__/queue-budget.test.ts`
 
@@ -215,23 +215,23 @@ git commit -m "feat: enforce free queue budget"
 - Daily schedules invoke token refresh, next-reel attachment, follower snapshot, and retention.
 - Each run creates and finalizes a `JobRun` row.
 
-- [ ] **Step 1: Write failing Workflow tests**
+- [x] **Step 1: Write failing Workflow tests**
 
 Test at most five account instances, skipped paused accounts, hourly recovery, identical Queue job contract for webhook and poll sources, bounded Meta pagination, per-step retry policy, daily task idempotency, and `JobRun` final state.
 
-- [ ] **Step 2: Port reconciliation and daily cron logic**
+- [x] **Step 2: Port reconciliation and daily cron logic**
 
 Move logic from `lib/polling/comment-reconciler.ts` and `app/api/cron/*` into dependency-injected services called by Workflow steps. Reconciliation publishes jobs; it never sends Meta replies directly.
 
-- [ ] **Step 3: Implement retention**
+- [x] **Step 3: Implement retention**
 
 In bounded batches, aggregate rows older than the target day, then delete detailed `DmLog`, `ProcessedEvent`, and resolved `OperationalEvent` rows older than 90 days. Do not delete `DailyAggregate`, active failures, accounts, automations, follower snapshots, or tracked-link aggregates.
 
-- [ ] **Step 4: Configure cron expressions**
+- [x] **Step 4: Configure cron expressions**
 
 Use UTC schedules: hourly reconciliation/recovery at minute 7, token refresh at 05:00, next reel at 06:00, follower snapshot at 07:00, and retention at 03:20. Record estimated Workflow steps before starting optional work.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `npx vitest run __tests__/workflows.test.ts`
 
@@ -258,21 +258,21 @@ git commit -m "feat: move scheduled work to Cloudflare workflows"
 - Modify: `package-lock.json`
 - Create: `__tests__/legacy-removal.test.ts`
 
-- [ ] **Step 1: Write a failing legacy-removal test**
+- [x] **Step 1: Write a failing legacy-removal test**
 
 Scan source and dependency manifests. Reject imports/references to
 `app/generated/cf-native`, `@prisma/adapter-pg`, `pg`, `bullmq`, `ioredis`,
 `next-auth`, `@auth/prisma-adapter`, `@vercel/analytics`, `REDIS_URL`,
 `workspaceId`, and `npm run worker`.
 
-- [ ] **Step 2: Promote the target schema**
+- [x] **Step 2: Promote the target schema**
 
 Move the reviewed CF-native schema to `prisma/schema.prisma`, change its client
 output to `../app/generated/prisma`, replace legacy migrations with the single
 fresh initial migration, run `npx prisma generate`, and mechanically update
 CF-native client imports.
 
-- [ ] **Step 3: Remove legacy modules and packages**
+- [x] **Step 3: Remove legacy modules and packages**
 
 Run:
 
@@ -285,7 +285,7 @@ heartbeat, and old polling implementation. Delete tests that exclusively assert
 removed workspace, billing, Auth.js, or Redis behavior only after equivalent
 Core/Jobs tests pass.
 
-- [ ] **Step 4: Verify the clean cutover**
+- [x] **Step 4: Verify the clean cutover**
 
 Run:
 
@@ -299,7 +299,7 @@ npm run lint
 
 Expected: PASS with no legacy runtime dependency or schema reference.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add package.json package-lock.json prisma lib worker __tests__
@@ -320,19 +320,19 @@ git commit -m "refactor: remove legacy node runtime"
 - Create: `docs/runbooks/recover-failed-jobs.md`
 - Create: `docs/runbooks/rotate-admin-password.md`
 
-- [ ] **Step 1: Extend CI gates**
+- [x] **Step 1: Extend CI gates**
 
 CI runs `npm ci`, Prisma generate/validate, unit and Worker tests, typecheck, lint, OpenNext build, Core dry run, and Jobs dry run. It fails when any compressed Worker exceeds the Free bundle limit.
 
-- [ ] **Step 2: Add manual production deployment workflow**
+- [x] **Step 2: Add manual production deployment workflow**
 
 The workflow requires an explicit dispatch, runs `prisma migrate deploy` once, deploys Jobs, Core, then Web, and never logs secret values. Use GitHub environment protection for production.
 
-- [ ] **Step 3: Document exact secrets and resources**
+- [x] **Step 3: Document exact secrets and resources**
 
 Document Neon `DATABASE_URL`, `ADMIN_LOGIN`, `ADMIN_PASSWORD_PEPPER`, `ADMIN_PASSWORD_VERIFIER`, `SESSION_SIGNING_KEY`, `ENCRYPTION_KEY`, Meta IDs/secrets, webhook token, R2 bucket, Queue/DLQ, Durable Object migrations, Workflow bindings, and custom routes.
 
-- [ ] **Step 4: Run the full verification matrix**
+- [x] **Step 4: Run the full verification matrix**
 
 Run:
 
@@ -353,7 +353,7 @@ Expected: every command exits 0 and all bundles fit Free limits.
 
 On the test deployment verify comment DM, follow gate rejection, follow gate success exactly once, duplicate webhook, delayed follow-up, hourly recovery, token pause isolation, inbox, tracked link, public report, retention dry run, and admin logout.
 
-- [ ] **Step 6: Commit and mark all plans complete**
+- [x] **Step 6: Commit and mark all plans complete**
 
 ```powershell
 git add --all .github .env.example README.md docs docker-compose.yml

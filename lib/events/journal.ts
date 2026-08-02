@@ -13,6 +13,7 @@ export type JournalBucket = {
   put(key: string, value: string, options?: { httpMetadata?: { contentType: string } }): Promise<unknown>;
   get(key: string): Promise<{ text(): Promise<string> } | null>;
   delete?(key: string): Promise<void>;
+  list?(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<{ objects: Array<{ key: string }>; truncated: boolean; cursor?: string }>;
 };
 
 function hex(bytes: Uint8Array) { return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(""); }

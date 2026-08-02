@@ -28,7 +28,7 @@ interface Campaign {
   openingDmMessage: string | null;
   openingDmButtonLabel: string | null;
   linkButtonLabel: string | null;
-  requireFollow: boolean;
+  requireFollowBeforeFreebie: boolean;
   followPromptMessage: string | null;
   followPromptButtonLabel: string | null;
   followUpEnabled: boolean;
@@ -235,7 +235,7 @@ export default function CampaignDetailPage() {
           </Summary>
         )}
 
-        {campaign.requireFollow && (
+        {campaign.requireFollowBeforeFreebie && (
           <Summary title="They must follow first">
             <FieldBox>
               {campaign.followPromptMessage ||
@@ -363,7 +363,7 @@ export default function CampaignDetailPage() {
             secondLinkButtonLabel={
               campaign.trackedLinks?.[1]?.label ?? "Open link"
             }
-            requireFollow={campaign.requireFollow}
+            requireFollow={campaign.requireFollowBeforeFreebie}
             followPromptMessage={campaign.followPromptMessage ?? ""}
             followPromptButtonLabel={
               campaign.followPromptButtonLabel ?? "i'm following"

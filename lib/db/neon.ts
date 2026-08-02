@@ -1,5 +1,5 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
-import { PrismaClient } from "@/app/generated/cf-native/client";
+import { PrismaClient } from "@/app/generated/prisma/client";
 
 /**
  * Creates a Prisma client for the current Worker request or queue batch.

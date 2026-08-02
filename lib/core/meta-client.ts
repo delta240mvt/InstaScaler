@@ -44,3 +44,8 @@ export async function getInstagramResource(path: string, accessToken: string, qu
   url.searchParams.set("access_token", accessToken);
   return json(await request(url));
 }
+
+export async function sendInstagramMessage(instagramId: string, accessToken: string, recipientId: string, text: string, request: Fetch = fetch): Promise<unknown> {
+  const url = new URL(`https://graph.instagram.com/${encodeURIComponent(instagramId)}/messages`);
+  return json(await request(url, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ recipient: { id: recipientId }, message: { text } }) }));
+}

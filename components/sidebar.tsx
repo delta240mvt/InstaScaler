@@ -3,7 +3,7 @@
 /**
  * Sidebar Navigation
  *
- * Text-only nav with active state and workspace section.
+ * Text-only navigation for the single administrator.
  */
 
 import Link from "next/link";
@@ -22,13 +22,11 @@ const navItems = [
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  workspaceName: string;
 }
 
 export default function Sidebar({
   isOpen,
   onClose,
-  workspaceName,
 }: SidebarProps) {
   const pathname = usePathname();
 
@@ -82,8 +80,8 @@ export default function Sidebar({
         </nav>
 
         <div className="px-5 py-4 border-t border-border">
-          <p className="text-sm text-foreground truncate">{workspaceName}</p>
-          <p className="text-xs text-muted">Self-hosted</p>
+          <p className="text-sm text-foreground">Administrator</p>
+          <p className="text-xs text-muted">Cloudflare native</p>
         </div>
       </aside>
     </>

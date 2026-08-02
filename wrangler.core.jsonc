@@ -8,7 +8,7 @@
   "durable_objects": {
     "bindings": [{ "name": "LOGIN_THROTTLE", "class_name": "LoginThrottle" }]
   },
-  "migrations": [{ "tag": "v1", "new_classes": ["LoginThrottle"] }],
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LoginThrottle"] }],
   "r2_buckets": [{ "binding": "EVENT_JOURNAL", "bucket_name": "instascaler-event-journal" }],
   "queues": { "producers": [{ "binding": "INSTAGRAM_EVENTS", "queue": "instascaler-events" }] }
 }

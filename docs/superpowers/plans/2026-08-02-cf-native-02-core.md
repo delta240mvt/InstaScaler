@@ -226,14 +226,14 @@ git commit -m "feat: port reports and diagnostics API"
 
 Assert all documented methods and paths are mounted, unknown `/api/*` returns JSON `404`, thrown validation errors return `400`, unauthenticated private routes return `401`, and unexpected errors return a request ID without stack traces.
 
-- [ ] **Step 2: Confirm legacy handlers are no longer authoritative**
+- [x] **Step 2: Confirm legacy handlers are no longer authoritative**
 
 Keep legacy handlers temporarily so the old Web build stays green. Production
 route configuration must send `/api/*` and `/r/*` to Core. Plan 3 deletes the
 legacy handlers after removing their remaining imports. Webhook and cron
 handlers are removed in Plan 4.
 
-- [ ] **Step 3: Run the Core checkpoint**
+- [x] **Step 3: Run the Core checkpoint**
 
 Run:
 
@@ -245,7 +245,7 @@ npm run typecheck
 
 Expected: PASS and bundle below the Free script-size limit.
 
-- [ ] **Step 4: Commit and mark plan complete**
+- [x] **Step 4: Commit and mark plan complete**
 
 ```powershell
 git add workers/core __tests__/core-contract.test.ts

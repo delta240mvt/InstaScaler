@@ -2,55 +2,27 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
-  test:
-    name: TypeScript checks
+  verify:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: 22
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma client
-        run: npm run db:generate
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npx prisma validate
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run cf:build:web
+      - run: npx wrangler deploy --dry-run --outdir dist/core --config wrangler.core.jsonc
+      - run: npx wrangler deploy --dry-run --outdir dist/jobs --config wrangler.jobs.jsonc
+      - run: npx wrangler deploy --dry-run --config wrangler.web.jsonc
+      - run: node scripts/check-worker-size.mjs .open-next/worker.js dist/core dist/jobs
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/instrareply
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Run tests
-        run: npm test
-
-      - name: Build
-        run: npm run build
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/instrareply
-          REDIS_URL: redis://localhost:6379
-          NEXTAUTH_URL: http://localhost:3000
-          NEXTAUTH_SECRET: test-secret-for-ci-build
-          CRON_SECRET: test-secret-for-ci-cron
-          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-          RESEND_API_KEY: re_test
-          EMAIL_FROM: "InstaReply <login@example.com>"
-          META_GRAPH_API_VERSION: v25.0
-          INSTAGRAM_APP_ID: test
-          INSTAGRAM_APP_SECRET: test
-          FACEBOOK_APP_SECRET: test
-          WEBHOOK_VERIFY_TOKEN: test
+          WORKER_GZIP_LIMIT_BYTES: "3145728"

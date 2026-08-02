@@ -64,19 +64,19 @@ git commit -m "feat: add typed core API client"
 - Login submits `{ login, password }` to `/api/auth/login`.
 - Protected prefixes include every dashboard route, campaigns, automations, inbox, logs, diagnostics, and settings.
 
-- [ ] **Step 1: Write failing auth UI tests**
+- [x] **Step 1: Write failing auth UI tests**
 
 Test empty validation, invalid-credential message, throttled message with retry time, callback URL restricted to local paths, logout, and redirect from protected routes without the `__Host-instascaler-session` cookie.
 
-- [ ] **Step 2: Replace Auth.js UI**
+- [x] **Step 2: Replace Auth.js UI**
 
 Render only login and password inputs. Remove email copy, magic-link state, OAuth provider UI, and verification page. Submit credentials through the typed client and redirect to a validated local callback or `/dashboard`.
 
-- [ ] **Step 3: Update proxy cookie detection**
+- [x] **Step 3: Update proxy cookie detection**
 
 Accept only `__Host-instascaler-session`. Presence is an optimistic routing hint; Core still verifies the signature for every API request.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `npx vitest run __tests__/web-auth.test.ts && npm run typecheck`
 
@@ -110,7 +110,7 @@ git commit -m "refactor: replace magic link with admin login"
 - Pages consume only `CoreApi` contracts.
 - Selected Instagram account remains a URL query parameter or browser preference, not workspace state.
 
-- [ ] **Step 1: Write the failing import-boundary test**
+- [x] **Step 1: Write the failing import-boundary test**
 
 Scan `app/` and `components/` and reject imports from `lib/db`, `app/generated/prisma`, `lib/workspace*`, `lib/billing`, `lib/queue`, and `lib/meta`.
 
@@ -118,18 +118,18 @@ Run: `npx vitest run __tests__/web-no-server-imports.test.ts`
 
 Expected: FAIL on current server-rendered pages.
 
-- [ ] **Step 2: Convert dashboard data access**
+- [x] **Step 2: Convert dashboard data access**
 
 Replace Prisma calls in layouts/pages with server-side Core API calls that forward the request cookie. Client polling pages use relative `/api/*` URLs routed to Core. Preserve loading, empty, unauthorized, and error states.
 
-- [ ] **Step 3: Remove workspace UI assumptions**
+- [x] **Step 3: Remove workspace UI assumptions**
 
 Delete team/member/invitation controls, workspace names, legacy workspace API
 routes, and their now-unused modules. Account selection operates directly on
 the up-to-five Instagram accounts. Settings shows administrator logout plus
 Instagram account connection state.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `npx vitest run __tests__/web-no-server-imports.test.ts && npm run typecheck`
 
@@ -151,15 +151,15 @@ git commit -m "refactor: make web UI consume core API"
 - Follow prompt fields remain `followPromptMessage` and `followPromptButtonLabel`.
 - Follow-up delay remains integer minutes from 0 through 1,440.
 
-- [ ] **Step 1: Write failing builder contract tests**
+- [x] **Step 1: Write failing builder contract tests**
 
 Test serialization and restoration of every campaign field, with special coverage for follow gate, opening DM, link button, public reply variants, next reel, any post, inbound DM trigger, and delayed follow-up.
 
-- [ ] **Step 2: Align UI with the new contract**
+- [x] **Step 2: Align UI with the new contract**
 
 Rename the current `requireFollow` transport field to `requireFollowBeforeFreebie`, retain current labels, and explain that Meta verifies follow when the user presses the confirmation button.
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 Run: `npx vitest run __tests__/campaign-builder-contract.test.ts`
 
@@ -195,15 +195,15 @@ git commit -m "feat: preserve follow-gated campaign builder"
 - Modify: `app/meta-review/page.tsx`
 - Create: `__tests__/public-route-scope.test.ts`
 
-- [ ] **Step 1: Write the route-scope test**
+- [x] **Step 1: Write the route-scope test**
 
 Assert removed routes have no page files and required legal/report routes exist. Assert `/` redirects authenticated users to `/dashboard` and unauthenticated users to `/login`.
 
-- [ ] **Step 2: Delete excluded surfaces and stale imports**
+- [x] **Step 2: Delete excluded surfaces and stale imports**
 
 Keep campaign templates only as private builder data in `lib/templates/campaign-templates.ts`. Remove public SEO metadata that names deleted routes.
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 Run: `npx vitest run __tests__/public-route-scope.test.ts && npm run lint && npm run typecheck`
 
@@ -222,15 +222,15 @@ git commit -m "refactor: remove public marketing and team UI"
 - Modify: `package.json`
 - Modify: `package-lock.json`
 
-- [ ] **Step 1: Add Playwright and a failing smoke flow**
+- [x] **Step 1: Add Playwright and a failing smoke flow**
 
 The flow logs in, views dashboard, switches account, creates a follow-gated campaign, opens diagnostics, logs out, and confirms a shared report remains public.
 
-- [ ] **Step 2: Configure OpenNext production settings**
+- [x] **Step 2: Configure OpenNext production settings**
 
 Keep `nodejs_compat`, configure static assets, and ensure Web calls the same-domain Core routes. Remove Vercel Analytics imports.
 
-- [ ] **Step 3: Verify Web Worker**
+- [x] **Step 3: Verify Web Worker**
 
 Run:
 
@@ -244,7 +244,7 @@ npx wrangler deploy --dry-run --config wrangler.web.jsonc
 
 Expected: PASS and compressed Worker bundle below the Free limit.
 
-- [ ] **Step 4: Commit and mark plan complete**
+- [x] **Step 4: Commit and mark plan complete**
 
 ```powershell
 git add next.config.ts wrangler.web.jsonc e2e playwright.config.ts package.json package-lock.json
