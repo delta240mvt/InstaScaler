@@ -253,3 +253,5 @@ git commit -m "refactor: complete native core worker"
 ```
 
 Change all completed checkboxes in this document to `[x]` and record the commit hash.
+
+Final implementation commit: `23158fb`.

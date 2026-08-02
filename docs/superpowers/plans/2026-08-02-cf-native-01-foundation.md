@@ -294,3 +294,5 @@ available during the parallel migration.
 - [x] **Step 2: Mark this plan complete**
 
 Change every completed checkbox in this document from `[ ]` to `[x]` and record the final commit hash below this task.
+
+Final implementation commit: `23158fb`.
