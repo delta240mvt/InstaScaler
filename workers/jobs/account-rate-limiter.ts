@@ -7,7 +7,8 @@ type State = {
 };
 
 export class AccountRateLimiter {
-  constructor(private readonly state: State, _env: unknown) {
+  constructor(private readonly state: State, env: unknown) {
+    void env;
     void state.blockConcurrencyWhile(async () => {
       state.storage.sql.exec("CREATE TABLE IF NOT EXISTS capacity (hour TEXT PRIMARY KEY, used INTEGER NOT NULL)");
     });

@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import { ZodError } from "zod";
-import { createAutomation, deleteAutomation, importAutomations, listAutomations, updateAutomation, type AutomationInput, type AutomationStore } from "@/lib/automations/service";
+import { createAutomation, deleteAutomation, importAutomations, listAutomations, setReportSharing, updateAutomation, type AutomationInput, type AutomationStore } from "@/lib/automations/service";
 import type { CoreEnv } from "@/lib/cloudflare/env";
 import { requireAdmin } from "@/workers/core/middleware/auth";
 
 export function automationRoutes(getDb: (env: CoreEnv) => AutomationStore) {
   const app = new Hono<{ Bindings: CoreEnv }>();
-  app.use("/automations*", requireAdmin);
+  app.use("/automations", requireAdmin);
+  app.use("/automations/*", requireAdmin);
   app.get("/automations", async (context) => context.json({ data: await listAutomations(getDb(context.env), context.req.query("instagramAccountId"), context.env.APP_BASE_URL) }));
   app.post("/automations", async (context) => {
     try { return context.json({ data: await createAutomation(getDb(context.env), await context.req.json<AutomationInput>()) }, 201); }
@@ -22,6 +23,12 @@ export function automationRoutes(getDb: (env: CoreEnv) => AutomationStore) {
     if (!id) return context.json({ error: "missing_automation_id" }, 400);
     await deleteAutomation(getDb(context.env), id);
     return context.body(null, 204);
+  });
+  app.patch("/automations/:id/report", async (context) => {
+    const body = await context.req.json<{ enabled?: unknown }>().catch(() => ({})) as { enabled?: unknown };
+    if (typeof body.enabled !== "boolean") return context.json({ error: "invalid_input" }, 400);
+    const data = await setReportSharing(getDb(context.env), context.req.param("id"), body.enabled, context.env.APP_BASE_URL);
+    return data ? context.json({ data }) : context.json({ error: "automation_not_found" }, 404);
   });
   app.post("/automations/import", async (context) => {
     const body = await context.req.json<{ campaigns?: AutomationInput[] }>();

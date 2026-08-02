@@ -5,11 +5,10 @@ import { createSessionToken } from "@/lib/admin-auth/session";
 import type { CoreEnv } from "@/lib/cloudflare/env";
 import { createPrisma } from "@/lib/db/neon";
 import type { AutomationStore } from "@/lib/automations/service";
-import type { AccountConnectionDb, AccountDb } from "@/lib/core/instagram-accounts";
 import { LoginThrottle } from "@/workers/core/login-throttle";
 import { requireAdmin, requireSameOrigin } from "@/workers/core/middleware/auth";
 import { automationRoutes } from "@/workers/core/routes/automations";
-import { instagramRoutes } from "@/workers/core/routes/instagram";
+import { instagramRoutes, type InstagramDb } from "@/workers/core/routes/instagram";
 import { webhookRoutes, type WebhookDb } from "@/workers/core/routes/webhook";
 import { dashboardRoutes, type DashboardDb } from "@/workers/core/routes/dashboard";
 import { reportRoutes, type ReportDb } from "@/workers/core/routes/reports";
@@ -18,7 +17,7 @@ import { diagnosticRoutes, type DiagnosticDb } from "@/workers/core/routes/diagn
 import { redirectRoutes, type RedirectDb } from "@/workers/core/routes/redirects";
 import { errorPayload, errorStatus } from "@/workers/core/middleware/errors";
 
-type CoreDatabase = AutomationStore & AccountDb & AccountConnectionDb & DashboardDb & ReportDb & LogDb & DiagnosticDb & RedirectDb & WebhookDb;
+type CoreDatabase = AutomationStore & InstagramDb & DashboardDb & ReportDb & LogDb & DiagnosticDb & RedirectDb & WebhookDb;
 
 export function createCoreApp(options?: { db?: CoreDatabase }) {
   const app = new Hono<{ Bindings: CoreEnv }>();
@@ -52,7 +51,7 @@ export function createCoreApp(options?: { db?: CoreDatabase }) {
     return context.json({ ok: true });
   });
   app.route("/api", automationRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as AutomationStore));
-  app.route("/api", instagramRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as AccountDb & AccountConnectionDb));
+  app.route("/api", instagramRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as InstagramDb));
   app.route("/api", dashboardRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as DashboardDb));
   app.route("/api", reportRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as ReportDb));
   app.route("/api", logRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as LogDb));
@@ -70,6 +69,8 @@ const app = createCoreApp();
 
 export { LoginThrottle };
 
-export default {
+const worker = {
   fetch: app.fetch,
 };
+
+export default worker;

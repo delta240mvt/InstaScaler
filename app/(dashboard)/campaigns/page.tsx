@@ -237,6 +237,22 @@ export default function CampaignsPage() {
     }
   }
 
+  async function toggleReport(auto: Campaign) {
+    setMenuOpenId(null);
+    try {
+      const response = await fetch(`/api/automations/${auto.id}/report`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !auto.reportShareEnabled }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Report update failed");
+      setAutomations((current) => current.map((item) => item.id === auto.id ? { ...item, ...payload.data } : item));
+    } catch (error) {
+      console.error("Failed to update public report:", error);
+    }
+  }
+
   async function duplicateAutomation(auto: Campaign) {
     setMenuOpenId(null);
     const specific = !auto.matchAnyPost && !auto.pendingNextReel;
@@ -493,6 +509,11 @@ export default function CampaignsPage() {
                     {auto.trackedLinks[0].trackedUrl}
                   </p>
                 )}
+                {auto.reportShareEnabled && auto.reportUrl && (
+                  <a href={auto.reportUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-xs font-medium text-accent hover:underline">
+                    Open public report
+                  </a>
+                )}
 
                 {/* Stats */}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-zinc-500">
@@ -580,6 +601,12 @@ export default function CampaignsPage() {
                           className="block w-full px-3 py-2 text-left text-sm text-foreground hover:bg-surface-hover"
                         >
                           Duplicate
+                        </button>
+                        <button
+                          onClick={() => void toggleReport(auto)}
+                          className="block w-full px-3 py-2 text-left text-sm text-foreground hover:bg-surface-hover"
+                        >
+                          {auto.reportShareEnabled ? "Disable report" : "Enable report"}
                         </button>
                         <button
                           onClick={() => {

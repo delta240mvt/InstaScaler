@@ -4,8 +4,9 @@ import type { CoreEnv } from "@/lib/cloudflare/env";
 import { exchangeInstagramCode, exchangeLongLivedToken, getInstagramProfile, getInstagramResource, sendInstagramMessage, subscribeInstagramWebhooks } from "@/lib/core/meta-client";
 import { buildAuthorizationUrl, createOAuthState, decryptToken, encryptToken, verifyOAuthState } from "@/lib/core/meta-oauth";
 import { requireAdmin } from "@/workers/core/middleware/auth";
+import { serializeFollowerHistory } from "@/lib/core/follower-history";
 
-type InstagramDb = AccountDb & AccountConnectionDb;
+export type InstagramDb = AccountDb & AccountConnectionDb & { followerSnapshot: { findMany(args: unknown): Promise<Array<{ date: Date; followersCount: number; backfilled: boolean }>> } };
 
 async function selectedAccount(db: AccountDb, id?: string) {
   const select = { id: true, instagramId: true, accessToken: true };
@@ -57,6 +58,12 @@ export function instagramRoutes(getDb: (env: CoreEnv) => InstagramDb) {
     if (!account) return context.json({ error: "account_not_found" }, 404);
     const profile = await getInstagramResource("me", await decryptToken(account.accessToken, context.env.ENCRYPTION_KEY), { fields: "id,user_id,username,name,profile_picture_url,followers_count,media_count" }) as Record<string, unknown>;
     return context.json({ data: { username: profile.username, name: profile.name ?? null, profilePictureUrl: profile.profile_picture_url ?? null, followersCount: profile.followers_count ?? null } });
+  });
+  app.get("/instagram/follower-history", async (context) => {
+    const account = await selectedAccount(getDb(context.env), context.req.query("instagramAccountId")) as { id: string } | null;
+    if (!account) return context.json({ error: "account_not_found" }, 404);
+    const rows = await getDb(context.env).followerSnapshot.findMany({ where: { instagramAccountId: account.id }, orderBy: { date: "asc" }, take: 365 });
+    return context.json({ data: serializeFollowerHistory(rows) });
   });
   app.get("/instagram/posts", async (context) => {
     const account = await selectedAccount(getDb(context.env), context.req.query("instagramAccountId")) as { instagramId: string; accessToken: string } | null;

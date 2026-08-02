@@ -1,11 +1,10 @@
 import { Hono } from "hono";
 import { journalEvent, verifyMetaSignature, type EventEnvelope } from "@/lib/events/journal";
 import type { CoreEnv } from "@/lib/cloudflare/env";
-import { reserveInboundEvent } from "@/lib/jobs/budget";
+import { reserveInboundEvent, type BudgetDb } from "@/lib/jobs/budget";
 
-export type WebhookDb = {
+export type WebhookDb = BudgetDb & {
   instagramAccount: { findUnique(args: unknown): Promise<{ id: string } | null> };
-  $transaction<T>(callback: (tx: { dailyAggregate: { upsert(args: unknown): Promise<unknown>; updateMany(args: unknown): Promise<{ count: number }> } }) => Promise<T>): Promise<T>;
 };
 
 function normalizeEvents(payload: Record<string, unknown>): EventEnvelope[] {

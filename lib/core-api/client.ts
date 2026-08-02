@@ -32,6 +32,7 @@ export function createCoreApi(options: Options) {
       list: () => request<ApiData<{ instagramAccounts: InstagramAccountSummary[]; selectedInstagramAccountId: string | null }>>("/api/instagram/accounts"),
       disconnect: (id: string) => request<void>("/api/instagram/disconnect", { method: "DELETE", query: { id } }),
       profile: (instagramAccountId?: string) => request<ApiData<unknown>>("/api/instagram/profile", { query: { instagramAccountId } }),
+      followerHistory: (instagramAccountId?: string) => request<ApiData<Array<{ date: string; followersCount: number; backfilled: boolean }>>>("/api/instagram/follower-history", { query: { instagramAccountId } }),
       posts: (instagramAccountId?: string) => request<ApiData<unknown>>("/api/instagram/posts", { query: { instagramAccountId } }),
       overview: (instagramAccountId?: string) => request<ApiData<unknown>>("/api/instagram/overview", { query: { instagramAccountId } }),
     },
@@ -39,6 +40,7 @@ export function createCoreApi(options: Options) {
       list: (query: Query = {}) => request<ApiData<AutomationContract[]>>("/api/automations", { query }),
       create: (input: unknown) => request<ApiData<AutomationContract>>("/api/automations", { method: "POST", body: jsonBody(input) }),
       update: (id: string, input: unknown) => request<ApiData<AutomationContract>>("/api/automations", { method: "PATCH", query: { id }, body: jsonBody(input) }),
+      setReportSharing: (id: string, enabled: boolean) => request<ApiData<{ reportShareEnabled: boolean; reportShareSlug: string; reportUrl: string | null }>>(`/api/automations/${encodeURIComponent(id)}/report`, { method: "PATCH", body: jsonBody({ enabled }) }),
       delete: (id: string) => request<void>("/api/automations", { method: "DELETE", query: { id } }),
       import: (campaigns: unknown[]) => request<ApiData<unknown>>("/api/automations/import", { method: "POST", body: jsonBody({ campaigns }) }),
     },
@@ -48,6 +50,7 @@ export function createCoreApi(options: Options) {
     },
     logs: (query: Query = {}) => request<ApiData<Page<unknown>>>("/api/logs", { query }),
     diagnostics: () => request<ApiData<unknown>>("/api/diagnostics"),
+    replayJob: (externalId: string) => request<ApiData<{ status: "queued" }>>("/api/diagnostics/replay", { method: "POST", body: jsonBody({ externalId }) }),
     reports: { get: (shareSlug: string) => request<ApiData<unknown>>(`/api/reports/${encodeURIComponent(shareSlug)}`) },
   };
 }

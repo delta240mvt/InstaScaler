@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { createReportShareSlug } from "@/lib/core/report-share";
 
-const automationInputSchema = z.object({
+const automationFieldsSchema = z.object({
   instagramAccountId: z.string().min(1).max(255),
   name: z.string().min(1).max(100),
   goal: z.string().max(120).nullable().optional(),
@@ -30,13 +31,15 @@ const automationInputSchema = z.object({
   publicReplyMessages: z.array(z.string().max(1000)).max(10).default([]),
   isActive: z.boolean().default(true),
   wholeWordMatch: z.boolean().default(true),
-}).superRefine((value, context) => {
+});
+
+const automationInputSchema = automationFieldsSchema.superRefine((value, context) => {
   if (!value.matchAnyPost && !value.pendingNextReel && !value.postId) context.addIssue({ code: "custom", path: ["postId"], message: "A trigger post is required" });
   if (!value.matchAnyWord && value.keywords.length === 0) context.addIssue({ code: "custom", path: ["keywords"], message: "A keyword is required" });
 });
 
 export type AutomationInput = z.input<typeof automationInputSchema>;
-export type AutomationStore = { automation: { findMany(args: unknown): Promise<unknown[]>; create(args: { data: unknown }): Promise<unknown>; update(args: unknown): Promise<unknown>; delete(args: unknown): Promise<unknown> } };
+export type AutomationStore = { automation: { findMany(args: unknown): Promise<unknown[]>; findUnique(args: unknown): Promise<unknown | null>; create(args: { data: unknown }): Promise<unknown>; update(args: unknown): Promise<unknown>; delete(args: unknown): Promise<unknown> } };
 
 function linkWrites(value: { trackedDestinationUrl: string; secondaryDestinationUrl: string; linkButtonLabel?: string | null; secondaryButtonLabel?: string | null }) {
   return [
@@ -81,7 +84,8 @@ export async function listAutomations(db: AutomationStore, instagramAccountId?: 
     const { dmLogs: _dmLogs, ...automation } = row;
     void _dmLogs;
     const trackedLinks = (row.trackedLinks ?? []).map((link) => ({ ...link, trackedUrl: baseUrl && typeof link.slug === "string" ? `${baseUrl.replace(/\/$/, "")}/r/${link.slug}` : undefined }));
-    return { ...automation, trackedLinks, reportUrl: null, analytics: { sent, skipped, failed, clicks, ctr: sent ? Math.round(clicks / sent * 1000) / 10 : 0, topKeywords: [...keywords].sort((left, right) => right[1] - left[1]).slice(0, 5).map(([keyword, count]) => ({ keyword, count })) } };
+    const reportUrl = baseUrl && row.reportShareEnabled && typeof row.reportShareSlug === "string" ? `${baseUrl.replace(/\/$/, "")}/reports/${row.reportShareSlug}` : null;
+    return { ...automation, trackedLinks, reportUrl, analytics: { sent, skipped, failed, clicks, ctr: sent ? Math.round(clicks / sent * 1000) / 10 : 0, topKeywords: [...keywords].sort((left, right) => right[1] - left[1]).slice(0, 5).map(([keyword, count]) => ({ keyword, count })) } };
   });
 }
 
@@ -90,9 +94,26 @@ export async function createAutomation(db: { automation: Pick<AutomationStore["a
 }
 
 export async function updateAutomation(db: { automation: Pick<AutomationStore["automation"], "update"> }, id: string, input: Partial<AutomationInput>) {
-  const normalized = normalizeAutomationInput(input as AutomationInput);
-  const links = normalized.trackedLinks.create;
-  return db.automation.update({ where: { id }, data: { ...normalized, trackedLinks: { deleteMany: {}, create: links } } });
+  const parsed = automationFieldsSchema.partial().parse(input);
+  const value = Object.fromEntries(Object.entries(parsed).filter(([key]) => Object.hasOwn(input, key))) as Partial<typeof parsed>;
+  const linkFieldsPresent = ["trackedDestinationUrl", "secondaryDestinationUrl", "secondaryButtonLabel"].some((key) => Object.hasOwn(value, key));
+  const data: Record<string, unknown> = Object.fromEntries(Object.entries(value).filter(([key]) => !["trackedDestinationUrl", "secondaryDestinationUrl", "secondaryButtonLabel"].includes(key)));
+  if (value.matchAnyWord) data.keywords = [];
+  if (value.openingDmEnabled === false) Object.assign(data, { openingDmMessage: null, openingDmButtonLabel: null });
+  if (value.requireFollowBeforeFreebie === false) Object.assign(data, { followPromptMessage: null, followPromptButtonLabel: null });
+  if (value.followUpEnabled === false) Object.assign(data, { followUpMessage: null, followUpDelayMinutes: 0 });
+  if (value.publicReplyEnabled === false) Object.assign(data, { publicReplyMessages: [], publicReplyMessage: null });
+  if (value.publicReplyMessages) data.publicReplyMessage = value.publicReplyMessages.map((message) => message.trim()).filter(Boolean)[0] ?? null;
+  if (linkFieldsPresent) data.trackedLinks = { deleteMany: {}, create: linkWrites({ trackedDestinationUrl: value.trackedDestinationUrl ?? "", secondaryDestinationUrl: value.secondaryDestinationUrl ?? "", linkButtonLabel: value.linkButtonLabel, secondaryButtonLabel: value.secondaryButtonLabel }) };
+  return db.automation.update({ where: { id }, data });
+}
+
+export async function setReportSharing(db: { automation: Pick<AutomationStore["automation"], "findUnique" | "update"> }, id: string, enabled: boolean, baseUrl: string) {
+  const current = await db.automation.findUnique({ where: { id }, select: { reportShareSlug: true } }) as { reportShareSlug?: string | null } | null;
+  if (!current) return null;
+  const reportShareSlug = current.reportShareSlug ?? createReportShareSlug();
+  await db.automation.update({ where: { id }, data: { reportShareEnabled: enabled, reportShareSlug } });
+  return { reportShareEnabled: enabled, reportShareSlug, reportUrl: enabled ? `${baseUrl.replace(/\/$/, "")}/reports/${reportShareSlug}` : null };
 }
 
 export async function deleteAutomation(db: { automation: Pick<AutomationStore["automation"], "delete"> }, id: string) {

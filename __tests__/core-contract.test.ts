@@ -13,6 +13,10 @@ describe("Core API contract", () => {
   it("protects private read models without a session", async () => {
     const response = await createCoreApp().request("https://core.example/api/logs", {}, { SESSION_SIGNING_KEY: "key" } as never);
     expect(response.status).toBe(401);
+    const replay = await createCoreApp().request("https://core.example/api/diagnostics/replay", { method: "POST", headers: { origin: "https://core.example" }, body: JSON.stringify({ externalId: "event" }) }, { SESSION_SIGNING_KEY: "key" } as never);
+    expect(replay.status).toBe(401);
+    const reportToggle = await createCoreApp().request("https://core.example/api/automations/id/report", { method: "PATCH", headers: { origin: "https://core.example" }, body: JSON.stringify({ enabled: true }) }, { SESSION_SIGNING_KEY: "key" } as never);
+    expect(reportToggle.status).toBe(401);
   });
 
   it("does not expose stack traces in unexpected errors", () => {

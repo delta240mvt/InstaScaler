@@ -47,7 +47,7 @@ describe("Core admin authentication", () => {
 
     const login = await app.request(
       "https://app.example/api/auth/login",
-      { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ login: "admin", password: "password" }) },
+      { method: "POST", headers: { "content-type": "application/json", origin: "https://app.example" }, body: JSON.stringify({ login: "admin", password: "password" }) },
       env,
     );
     expect(login.status).toBe(200);
@@ -56,6 +56,8 @@ describe("Core admin authentication", () => {
 
     const valid = await app.request("https://app.example/api/auth/session", { headers: { cookie: cookie ?? "" } }, env);
     expect(valid.status).toBe(200);
+    const noOrigin = await app.request("https://app.example/api/auth/logout", { method: "POST", headers: { cookie: cookie ?? "" } }, env);
+    expect(noOrigin.status).toBe(403);
     const forbidden = await app.request("https://app.example/api/auth/logout", { method: "POST", headers: { cookie: cookie ?? "", origin: "https://other.example" } }, env);
     expect(forbidden.status).toBe(403);
   });

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { deliverFollowProtectedFreebie } from "@/lib/delivery/follow-gate";
+import { getUserFollowStatus, TokenExpiredError } from "@/lib/meta/client";
 
 describe("follow-before-freebie gate", () => {
   it("sends a prompt from a comment without delivering the freebie", async () => {
@@ -21,5 +22,11 @@ describe("follow-before-freebie gate", () => {
     reserveDelivery.mockResolvedValue(false);
     await expect(deliverFollowProtectedFreebie(ctx, { requireFollowBeforeFreebie: true, isPostback: true, instagramAccountId: "account", userId: "user" })).resolves.toEqual({ status: "skipped", code: "DELIVERY_ALREADY_RESERVED" });
     expect(sendFreebie).toHaveBeenCalledOnce();
+  });
+
+  it("surfaces an expired token instead of retrying an unverifiable follow forever", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: { code: 190, message: "expired" } }), { status: 400, headers: { "content-type": "application/json" } })));
+    await expect(getUserFollowStatus("token", "user")).rejects.toBeInstanceOf(TokenExpiredError);
+    vi.unstubAllGlobals();
   });
 });

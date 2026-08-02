@@ -7,6 +7,9 @@ type Diagnostics = {
   jobRuns: Array<{ id: string; kind: string; status: string; startedAt: string; errorMessage?: string | null }>;
   operationalEvents: Array<{ id: string; level: string; source: string; message: string; createdAt: string }>;
   dailyCounters: Array<{ id: string; date: string; received: number; sent: number; failed: number; queueJobs: number; workflowSteps: number }>;
+  globalBudgets: Array<{ date: string; received: number; queueJobs: number; workflowSteps: number }>;
+  accounts: Array<{ id: string; username: string; webhookSubscribed: boolean; requiresReconnect: boolean; lastErrorCode?: string | null; tokenExpiresAt?: string | null }>;
+  failedJobs: Array<{ externalId: string; kind: string; firstSeenAt: string; instagramAccount?: { username?: string | null } | null }>;
   database: { bytes: number; level: string };
 };
 
@@ -17,6 +20,11 @@ export default function DiagnosticsPage() {
     setError(null);
     try { setData((await createCoreApi({ baseUrl: "" }).diagnostics()).data as Diagnostics); }
     catch { setError("Could not load diagnostics."); }
+  }
+  async function replay(externalId: string) {
+    setError(null);
+    try { await createCoreApi({ baseUrl: "" }).replayJob(externalId); await refresh(); }
+    catch { setError("Could not queue the failed job for replay."); }
   }
   useEffect(() => {
     let active = true;
@@ -30,7 +38,10 @@ export default function DiagnosticsPage() {
     {error && <p className="text-error">{error}</p>}
     {!data ? <div className="panel h-48 rounded" /> : <>
       <section className="panel rounded p-5"><h2 className="font-semibold">Database</h2><p className="mt-2 text-sm text-muted">{(data.database.bytes / 1024 / 1024).toFixed(1)} MB · {data.database.level}</p></section>
+      <section className="panel rounded p-5"><h2 className="font-semibold">Global free-plan budget</h2>{data.globalBudgets[0] ? <p className="mt-2 text-sm text-muted">{data.globalBudgets[0].received}/1,000 events · {data.globalBudgets[0].queueJobs}/9,500 Queue operations · {data.globalBudgets[0].workflowSteps}/2,800 Workflow steps</p> : <p className="mt-2 text-sm text-muted">No usage recorded today.</p>}</section>
+      <section className="panel rounded p-5"><h2 className="font-semibold">Instagram accounts</h2><div className="mt-4 space-y-2">{data.accounts.map((account) => <div key={account.id} className="flex justify-between gap-3 border-b border-border py-2 text-sm"><span>@{account.username}</span><span className={account.requiresReconnect ? "text-error" : "text-muted"}>{account.requiresReconnect ? `Reconnect required · ${account.lastErrorCode ?? "token error"}` : account.webhookSubscribed ? "Connected" : "Webhook inactive"}</span></div>)}</div></section>
       <section className="panel rounded p-5"><h2 className="font-semibold">Recent jobs</h2><div className="mt-4 space-y-2">{data.jobRuns.length ? data.jobRuns.map((run) => <div key={run.id} className="flex justify-between gap-3 border-b border-border py-2 text-sm"><span>{run.kind}</span><span className="text-muted">{run.status}</span></div>) : <p className="text-sm text-muted">No job runs yet.</p>}</div></section>
+      <section className="panel rounded p-5"><h2 className="font-semibold">Failed jobs available for replay</h2><div className="mt-4 space-y-2">{data.failedJobs.length ? data.failedJobs.map((job) => <div key={job.externalId} className="flex items-center justify-between gap-3 border-b border-border py-2 text-sm"><span>{job.kind} · @{job.instagramAccount?.username ?? "unknown"}</span><button onClick={() => void replay(job.externalId)} className="rounded border border-border px-2 py-1 text-xs">Replay</button></div>) : <p className="text-sm text-muted">No replayable failures.</p>}</div></section>
       <section className="panel rounded p-5"><h2 className="font-semibold">Open operational events</h2><div className="mt-4 space-y-2">{data.operationalEvents.length ? data.operationalEvents.map((event) => <div key={event.id} className="border-b border-border py-2 text-sm"><strong>{event.level}</strong> · {event.message}</div>) : <p className="text-sm text-muted">No open incidents.</p>}</div></section>
     </>}
   </div>;

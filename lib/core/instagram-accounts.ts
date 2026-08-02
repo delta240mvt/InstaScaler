@@ -20,12 +20,13 @@ export async function connectInstagramAccount(db: AccountConnectionDb, input: { 
   return db.$transaction(async (transaction) => {
     const existing = await transaction.instagramAccount.findUnique({ where: { instagramId: input.instagramId }, select: { id: true } });
     if (!existing && await transaction.instagramAccount.count() >= 5) throw new AccountLimitError("Up to five Instagram accounts are allowed");
-    return transaction.instagramAccount.upsert({ where: { instagramId: input.instagramId }, create: input, update: input });
+    const data = { ...input, requiresReconnect: false, lastErrorCode: null };
+    return transaction.instagramAccount.upsert({ where: { instagramId: input.instagramId }, create: data, update: data });
   });
 }
 
 export function listInstagramAccounts(db: AccountDb) {
-  return db.instagramAccount.findMany({ orderBy: { connectedAt: "desc" }, select: { id: true, instagramId: true, username: true, name: true, webhookSubscribed: true, tokenExpiresAt: true } });
+  return db.instagramAccount.findMany({ orderBy: { connectedAt: "desc" }, select: { id: true, instagramId: true, username: true, name: true, webhookSubscribed: true, requiresReconnect: true, lastErrorCode: true, tokenExpiresAt: true } });
 }
 
 export function disconnectInstagramAccount(db: AccountDb, id: string) {

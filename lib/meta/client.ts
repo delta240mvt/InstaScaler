@@ -266,7 +266,7 @@ export async function getUserFollowStatus(
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    if (!response.ok) return null;
+    if (!response.ok) return handleResponse<boolean>(response);
     const data = await response.json();
     return typeof data?.is_user_follow_business === "boolean"
       ? data.is_user_follow_business

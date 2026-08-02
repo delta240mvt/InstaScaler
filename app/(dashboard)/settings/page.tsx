@@ -5,16 +5,16 @@ import { useRouter } from "next/navigation";
 import { InstagramConnectNotice } from "@/components/instagram-connect-notice";
 import { createCoreApi } from "@/lib/core-api/client";
 import type { InstagramAccountSummary } from "@/lib/core-api/contracts";
+const coreApi = createCoreApi({ baseUrl: "" });
 
 export default function SettingsPage() {
   const router = useRouter();
   const [accounts, setAccounts] = useState<InstagramAccountSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
-  const api = createCoreApi({ baseUrl: "" });
 
   useEffect(() => {
-    api.accounts.list()
+    coreApi.accounts.list()
       .then((payload) => setAccounts(payload.data.instagramAccounts))
       .finally(() => setLoading(false));
   }, []);
@@ -23,7 +23,7 @@ export default function SettingsPage() {
     if (!confirm("Disconnect Instagram? Campaigns for this account will stop sending DMs.")) return;
     setBusy(id);
     try {
-      await api.accounts.disconnect(id);
+      await coreApi.accounts.disconnect(id);
       setAccounts((current) => current.filter((account) => account.id !== id));
     } finally {
       setBusy(null);
@@ -33,7 +33,7 @@ export default function SettingsPage() {
   async function logout() {
     setBusy("logout");
     try {
-      await api.auth.logout();
+      await coreApi.auth.logout();
       router.replace("/login");
       router.refresh();
     } finally {

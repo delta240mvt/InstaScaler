@@ -12,8 +12,9 @@ import {
   sendPrivateReplyWithButton,
 } from "@/lib/meta/client";
 import { deliveryError } from "@/lib/delivery/errors";
+import { PermissionError, TokenExpiredError } from "@/lib/meta/client";
 import type { JobResult } from "@/lib/delivery";
-import { reserveQueueJob, validateDelaySeconds } from "@/lib/jobs/budget";
+import { reserveQueueJob, validateDelaySeconds, type BudgetDb } from "@/lib/jobs/budget";
 
 type Automation = {
   id: string; instagramAccountId: string; name: string; postId: string | null; matchAnyPost: boolean;
@@ -25,14 +26,25 @@ type Automation = {
   trackedLinks?: Array<{ slug: string }>;
 };
 type Account = { id: string; instagramId: string; accessToken: string; webhookSubscribed: boolean; automations?: Automation[] };
-type DeliveryDb = {
-  $transaction<T>(callback: (tx: { dailyAggregate: { upsert(args: unknown): Promise<unknown>; updateMany(args: unknown): Promise<{ count: number }> } }) => Promise<T>): Promise<T>;
-  instagramAccount: { findUnique(args: unknown): Promise<Account | null> };
+type DeliveryDb = BudgetDb & {
+  instagramAccount: { findUnique(args: unknown): Promise<Account | null>; update(args: unknown): Promise<unknown> };
+  operationalEvent: { create(args: unknown): Promise<unknown> };
   automation: { findFirst(args: unknown): Promise<(Automation & { instagramAccount: Account }) | null> };
   dmLog: { findUnique(args: unknown): Promise<{ status?: string } | null>; create(args: unknown): Promise<unknown>; update(args: unknown): Promise<unknown>; upsert(args: unknown): Promise<unknown> };
 };
 
 type DeliveryReservationDb = { dmLog: Pick<DeliveryDb["dmLog"], "findUnique" | "create" | "update"> };
+
+type FailureDb = { instagramAccount: Pick<DeliveryDb["instagramAccount"], "update">; operationalEvent: DeliveryDb["operationalEvent"] };
+
+export async function handleDeliveryFailure(db: FailureDb, instagramId: string, error: unknown): Promise<JobResult> {
+  if (error instanceof TokenExpiredError || error instanceof PermissionError) {
+    const lastErrorCode = error instanceof TokenExpiredError ? "META_TOKEN_EXPIRED" : "META_PERMISSION";
+    await db.instagramAccount.update({ where: { instagramId }, data: { webhookSubscribed: false, requiresReconnect: true, lastErrorCode } });
+    await db.operationalEvent.create({ data: { source: "JOBS", level: "ERROR", message: "Instagram account requires reconnection", payload: { instagramId, code: lastErrorCode } } });
+  }
+  return deliveryError(error);
+}
 
 export async function reserveDelivery(db: DeliveryReservationDb, data: { externalId: string; automationId: string; instagramAccountId: string; commenterId: string }): Promise<boolean> {
   const existing = await db.dmLog.findUnique({ where: { externalId: data.externalId } });
@@ -179,5 +191,5 @@ export async function deliverInstagramJob(context: { db: unknown; env: JobsEnv }
     if (job.kind === "POSTBACK") return await deliverPostback(db, context.env, envelope);
     if (job.kind === "MESSAGE") return await deliverMessage(db, context.env, envelope);
     return { status: "skipped", code: "RECOVERY_CONTROL" };
-  } catch (error) { return deliveryError(error); }
+  } catch (error) { return handleDeliveryFailure(db, job.instagramAccountId, error); }
 }

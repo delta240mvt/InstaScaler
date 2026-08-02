@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createAutomation, importAutomations, normalizeAutomationInput } from "@/lib/automations/service";
+import { createAutomation, importAutomations, normalizeAutomationInput, setReportSharing, updateAutomation } from "@/lib/automations/service";
 import { automationRoutes } from "@/workers/core/routes/automations";
 import { dashboardRoutes } from "@/workers/core/routes/dashboard";
 
@@ -34,6 +34,22 @@ describe("single-owner automation service", () => {
     expect((create.mock.calls[0][0].data as Record<string, unknown>)).not.toHaveProperty("trackedDestinationUrl");
   });
 
+  it("accepts partial patches used by campaign toggles", async () => {
+    const update = vi.fn(async ({ data }: { data: unknown }) => data);
+    await updateAutomation({ automation: { update } }, "automation", { isActive: false });
+    expect(update).toHaveBeenCalledWith({ where: { id: "automation" }, data: { isActive: false } });
+  });
+
+  it("creates and reuses an unguessable public report URL", async () => {
+    const update = vi.fn(async ({ data }: { data: unknown }) => data);
+    const db = { automation: { findUnique: vi.fn(async () => ({ reportShareSlug: null })), update } };
+    const result = await setReportSharing(db, "automation", true, "https://app.example.com");
+    if (!result) throw new Error("Expected report settings");
+    expect(result).toMatchObject({ reportShareEnabled: true });
+    expect(result.reportUrl).toMatch(/^https:\/\/app\.example\.com\/reports\/[A-Za-z0-9_-]{32}$/);
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ reportShareEnabled: true, reportShareSlug: expect.any(String) }) }));
+  });
+
   it("mounts CRUD and import on the documented paths", () => {
     const routes = automationRoutes(() => ({}) as never).routes.map((route) => `${route.method} ${route.path}`);
     expect(routes).toEqual(expect.arrayContaining([
@@ -41,6 +57,7 @@ describe("single-owner automation service", () => {
       "POST /automations",
       "PATCH /automations",
       "DELETE /automations",
+      "PATCH /automations/:id/report",
       "POST /automations/import",
     ]));
   });

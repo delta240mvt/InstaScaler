@@ -19,6 +19,8 @@ model InstagramAccount {
   accessToken       String
   tokenExpiresAt    DateTime?
   webhookSubscribed Boolean  @default(false)
+  requiresReconnect  Boolean  @default(false)
+  lastErrorCode      String?
   connectedAt       DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -190,6 +192,13 @@ model DailyAggregate {
   @@index([date])
 }
 
+model DailyBudget {
+  date          DateTime @id @db.Date
+  received      Int      @default(0)
+  queueJobs     Int      @default(0)
+  workflowSteps Int      @default(0)
+}
+
 model OperationalEvent {
   id        String                  @id @default(cuid())
   source    OperationalEventSource
@@ -240,6 +249,11 @@ enum JobKind {
   FOLLOW_UP
   MESSAGE
   RECOVER_R2
+  RECONCILE
+  REFRESH_TOKENS
+  ATTACH_NEXT_REEL
+  SNAPSHOT_FOLLOWERS
+  RETENTION
 }
 
 enum JobStatus {

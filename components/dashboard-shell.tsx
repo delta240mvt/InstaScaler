@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "@/components/sidebar";
 import TopBar from "@/components/top-bar";
 import { createCoreApi } from "@/lib/core-api/client";
+import { useRouter } from "next/navigation";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -14,12 +15,22 @@ export default function DashboardShell({
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [accounts, setAccounts] = useState<Array<{ username: string }>>([]);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    createCoreApi({ baseUrl: "" }).accounts.list()
-      .then((payload) => setAccounts(payload.data.instagramAccounts))
-      .catch(() => setAccounts([]));
-  }, []);
+    const api = createCoreApi({ baseUrl: "" });
+    api.auth.session()
+      .then(() => {
+        setSessionChecked(true);
+        api.accounts.list()
+          .then((payload) => setAccounts(payload.data.instagramAccounts))
+          .catch(() => setAccounts([]));
+      })
+      .catch(() => { router.replace("/login"); router.refresh(); });
+  }, [router]);
+
+  if (!sessionChecked) return <div className="min-h-dvh bg-background" aria-label="Checking session" />;
 
   return (
     // h-dvh, not h-screen: on mobile browsers the URL bar eats into 100vh, which

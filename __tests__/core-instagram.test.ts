@@ -65,6 +65,7 @@ describe("single-owner Instagram accounts", () => {
       "GET /instagram/accounts",
       "DELETE /instagram/disconnect",
       "GET /instagram/profile",
+      "GET /instagram/follower-history",
       "GET /instagram/posts",
       "GET /instagram/overview",
       "GET /instagram/conversations",

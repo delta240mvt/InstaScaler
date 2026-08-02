@@ -6,7 +6,7 @@ type DurableStorage = {
 type DurableState = { storage: DurableStorage };
 
 export class LoginThrottle {
-  constructor(private readonly state: DurableState, _env: unknown) {}
+  constructor(private readonly state: DurableState, env: unknown) { void env; }
 
   async checkAndRecord(success: boolean): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
     const now = Date.now();
