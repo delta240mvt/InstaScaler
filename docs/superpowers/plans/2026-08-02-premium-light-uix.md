@@ -313,7 +313,7 @@ Confirm all administrator pages use responsive padding, no fixed content width b
 
 Record the final test count, bundle sizes, UIX review findings and deployment smoke results. Change every completed checkbox in this plan to `[x]`.
 
-- [ ] **Step 4: Commit and push**
+- [x] **Step 4: Commit and push**
 
 ```bash
 git add docs/superpowers/reviews/2026-08-02-cloudflare-native-production-review.md docs/superpowers/plans/2026-08-02-premium-light-uix.md
@@ -321,7 +321,7 @@ git commit -m "docs: complete premium UIX review"
 git push
 ```
 
-- [ ] **Step 5: Deploy synchronized HEAD**
+- [x] **Step 5: Deploy synchronized HEAD**
 
 ```bash
 npm run cf:deploy:jobs
@@ -331,6 +331,6 @@ npm run cf:deploy:web
 
 Expected: each command returns a new Cloudflare version ID.
 
-- [ ] **Step 6: Production smoke from terminal**
+- [x] **Step 6: Production smoke from terminal**
 
 Verify Web `/login` returns 200 with the login form, Core `/health` returns `{status:"ok"}`, Jobs `/health` returns `{status:"ok"}`, and local HEAD equals `origin/baza020826-cf-native`.

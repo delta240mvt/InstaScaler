@@ -68,6 +68,8 @@ viewport inbox sizing were identified and corrected before release.
 - [x] Production Queue, dead-letter Queue and R2 journal resources exist in Cloudflare.
 - [x] Web, Core, Jobs, six Workflows and both Durable Objects are deployed on the Free account.
 - [x] The hourly Durable Object alarm is armed; deployed Web login and both health endpoints return `200`.
+- [x] Premium UIX release deployed as Jobs `a392484d-893f-495e-86c1-14a61c5130d3`, Core `fa0b3a05-4b2b-45bf-8703-9548351d9105` and Web `4091f2d2-96d8-44c3-8094-7fc6d4fb0c66`.
+- [x] Terminal smoke confirmed the Web login contains the sign-in form and Core/Jobs both return their expected `{status:"ok"}` health payloads.
 - [ ] Apply the migration to the supplied Neon database.
 - [ ] Configure Cloudflare admin, Neon and Meta secrets.
 - [ ] Run browser and dedicated Meta acceptance tests on the deployed stack.
