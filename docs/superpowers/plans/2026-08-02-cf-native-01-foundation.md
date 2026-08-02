@@ -289,6 +289,8 @@ Run: `npm test && npm run typecheck && npm run lint && npm run cf:build:web`
 Expected: all checks pass because the legacy schema and dependencies remain
 available during the parallel migration.
 
+> Execution note (2026-08-02): the test suite (142 tests), lint, Prisma schema validation, and both native Worker dry runs pass. OpenNext reaches and compiles Next successfully, then correctly fails on the already-recorded legacy type errors. Type errors are not suppressed; this checkpoint is completed after the legacy Web/API code is removed in Plan 3/4.
+
 - [ ] **Step 2: Mark this plan complete**
 
 Change every completed checkbox in this document from `[ ]` to `[x]` and record the final commit hash below this task.

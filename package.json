@@ -13,7 +13,7 @@
     "worker": "tsx worker/dm-worker.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "cf:build:web": "opennextjs-cloudflare build",
+    "cf:build:web": "opennextjs-cloudflare build --skipWranglerConfigCheck",
     "cf:dev:core": "wrangler dev --config wrangler.core.jsonc",
     "cf:dev:jobs": "wrangler dev --config wrangler.jobs.jsonc",
     "cf:deploy:web": "opennextjs-cloudflare deploy --config wrangler.web.jsonc",
