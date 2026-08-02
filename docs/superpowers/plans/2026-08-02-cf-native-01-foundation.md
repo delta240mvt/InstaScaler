@@ -162,7 +162,7 @@ Run: `npx prisma validate --schema prisma/schema.cf-native.prisma && npx vitest 
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit** (`fced46b`)
 
 ```powershell
 git add prisma __tests__/schema-contract.test.ts
@@ -180,7 +180,7 @@ git commit -m "refactor: create single-owner database schema"
 - Produces: `createPrisma(connectionString: string): PrismaClient`.
 - Produces: `DatabaseEnv = { DATABASE_URL: string }`.
 
-- [ ] **Step 1: Write the failing factory test**
+- [x] **Step 1: Write the failing factory test**
 
 Mock `PrismaNeon` and `PrismaClient`; assert one adapter is constructed with the supplied URL and that no module-level client is created.
 
@@ -188,7 +188,7 @@ Run: `npx vitest run __tests__/db-client.test.ts`
 
 Expected: FAIL because the current module exports a global `prisma` proxy using `PrismaPg`.
 
-- [ ] **Step 2: Implement the factory**
+- [x] **Step 2: Implement the factory**
 
 ```ts
 import { PrismaNeon } from "@prisma/adapter-neon";
@@ -203,7 +203,7 @@ export function createPrisma(connectionString: string): PrismaClient {
 Do not modify the legacy `lib/db/client.ts` yet and do not cache `Pool`,
 `Client`, or Prisma objects across Worker invocations.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify** (focused test passes; whole-project typecheck has only the recorded legacy failures)
 
 Run: `npx vitest run __tests__/db-client.test.ts && npm run typecheck`
 
