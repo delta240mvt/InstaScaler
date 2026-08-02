@@ -108,3 +108,20 @@ describe("campaign workflow UIX", () => {
     expect(source("app/(dashboard)/campaigns/[id]/page.tsx")).toContain("app-card");
   });
 });
+
+describe("mobile inbox and activity", () => {
+  it("uses a one-pane phone inbox with an accessible back action and sticky composer", () => {
+    const inbox = source("app/(dashboard)/inbox/page.tsx");
+    expect(inbox).toContain('aria-label="Back to conversations"');
+    expect(inbox).toContain('aria-label="Conversation thread"');
+    expect(inbox).toContain("sticky bottom-0");
+    expect(inbox).toContain('active ? "hidden" : "flex"');
+  });
+
+  it("renders readable mobile activity cards as well as the desktop table", () => {
+    const logs = source("app/(dashboard)/logs/page.tsx");
+    expect(logs).toContain("app-page-title");
+    expect(logs).toContain("md:hidden");
+    expect(logs).toContain("hidden overflow-x-auto md:block");
+  });
+});

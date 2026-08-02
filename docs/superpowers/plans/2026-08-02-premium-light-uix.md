@@ -212,23 +212,23 @@ git commit -m "feat: elevate campaign workflows"
 - Polling, cache keys, message API calls and send behavior remain unchanged.
 - Add only presentational state needed to switch list/thread panes on small screens.
 
-- [ ] **Step 1: Add failing responsive inbox contracts**
+- [x] **Step 1: Add failing responsive inbox contracts**
 
 Assert a mobile thread back action, sticky composer, labeled conversation region, message status treatment and responsive logs presentation.
 
-- [ ] **Step 2: Run contract test and confirm failure**
+- [x] **Step 2: Run contract test and confirm failure**
 
 Run: `npx vitest run __tests__/ui-contract.test.ts`
 
-- [ ] **Step 3: Implement inbox responsive behavior**
+- [x] **Step 3: Implement inbox responsive behavior**
 
 Keep the desktop split view. On phones show the conversation list or active thread, never both; provide a 44px back action, sticky thread header, readable bubbles and a composer that remains usable above the virtual keyboard.
 
-- [ ] **Step 4: Polish logs**
+- [x] **Step 4: Polish logs**
 
 Apply consistent filter controls, status pills, empty/loading/error states and switch dense table rows to readable mobile cards when required.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `npx vitest run __tests__/ui-contract.test.ts __tests__/core-read-models.test.ts && npm run typecheck && npm run lint`
 

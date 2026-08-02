@@ -99,15 +99,16 @@ export default function LogsPage() {
 
   return (
     <div className="space-y-6">
+      <header><p className="app-kicker">Operations</p><h1 className="app-page-title mt-2">Activity logs</h1><p className="app-page-description mt-2">Inspect every delivery, skip and failure across your campaigns.</p></header>
       {/* Filters */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="app-card flex flex-col gap-4 p-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-wrap gap-2">
           {STATUS_FILTERS.map((status) => (
             <button
               key={status}
               onClick={() => handleFilterChange(status)}
               className={`
-                px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+                min-h-11 px-3 py-2 rounded-lg text-xs font-medium transition-all
                 ${
                   statusFilter === status
                     ? "bg-accent/15 text-accent border border-accent/20"
@@ -129,10 +130,21 @@ export default function LogsPage() {
       </div>
 
       {/* Table */}
-      <div className="panel rounded overflow-hidden">
+      <div className="app-card overflow-hidden">
+        <div className="divide-y divide-border md:hidden">
+          {loading && Array.from({ length: 4 }, (_, index) => <div key={index} className="app-skeleton m-4 h-24 rounded-xl" />)}
+          {!loading && logs.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted">No logs found</p>}
+          {!loading && logs.map((log) => (
+            <article key={log.id} className="space-y-3 p-4">
+              <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-semibold">@{log.commenterName ?? log.commenterId.slice(0, 8)}</p><p className="mt-1 truncate text-xs text-muted">{log.commentText}</p></div><StatusBadge status={log.status} /></div>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted"><span>{log.automation.name}</span><span aria-hidden="true">·</span><span>@{log.instagramAccount.username}</span><span aria-hidden="true">·</span><time>{new Date(log.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time></div>
+              {log.errorMessage && <p className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{log.errorMessage}</p>}
+            </article>
+          ))}
+        </div>
         {/* Six columns don't fit a phone; the table keeps its width and scrolls
             horizontally inside the panel rather than crushing every cell. */}
-        <div className="overflow-x-auto">
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-border text-left">
