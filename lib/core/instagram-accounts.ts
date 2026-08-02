@@ -2,7 +2,7 @@ export class AccountLimitError extends Error {
   code = "ACCOUNT_LIMIT_REACHED" as const;
 }
 
-type AccountDb = { instagramAccount: { count(args?: unknown): Promise<number>; upsert(args: unknown): Promise<unknown>; findMany(args?: unknown): Promise<unknown[]>; delete(args: unknown): Promise<unknown> } };
+export type AccountDb = { instagramAccount: { count(args?: unknown): Promise<number>; upsert(args: unknown): Promise<unknown>; findMany(args?: unknown): Promise<unknown[]>; delete(args: unknown): Promise<unknown> } };
 
 export async function connectInstagramAccount(db: AccountDb, input: { instagramId: string; username: string; name?: string | null; accessToken: string; tokenExpiresAt?: Date | null; webhookSubscribed?: boolean }) {
   const existingCount = await db.instagramAccount.count();
