@@ -1,6 +1,5 @@
 import type { JobsEnv } from "@/lib/cloudflare/env";
 import { AccountRateLimiter } from "@/workers/jobs/account-rate-limiter";
-import { startScheduledWorkflows } from "@/workers/jobs/scheduled";
 import { createPrisma } from "@/lib/db/neon";
 import { loadJournalEvent, deleteJournalEvent } from "@/lib/events/journal";
 import { parseInstagramJob } from "@/lib/jobs/contracts";
@@ -34,6 +33,14 @@ export async function consumeQueueBatch(
 }
 
 const worker = {
+  async fetch(request: Request, env: JobsEnv): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname === "/health" && request.method === "GET") return Response.json({ status: "ok", service: "jobs" });
+    if (url.pathname !== "/internal/bootstrap" || request.method !== "POST") return new Response("Not found", { status: 404 });
+    if (!env.SCHEDULER_BOOTSTRAP_TOKEN || request.headers.get("authorization") !== `Bearer ${env.SCHEDULER_BOOTSTRAP_TOKEN}`) return new Response("Unauthorized", { status: 401 });
+    const scheduler = env.WORKFLOW_SCHEDULER.get(env.WORKFLOW_SCHEDULER.idFromName("singleton"));
+    return Response.json(await scheduler.bootstrap());
+  },
   async queue(batch: QueueBatch, env: JobsEnv): Promise<void> {
     const db = createPrisma(env.DATABASE_URL);
     await consumeQueueBatch(batch, async (body) => {
@@ -57,15 +64,12 @@ const worker = {
       return account ? reserveQueueRetry(db, account.id) : false;
     });
   },
-  async scheduled(event: { cron: string }, env: JobsEnv): Promise<void> {
-    const result = await startScheduledWorkflows(event.cron, env);
-    console.log("Scheduled Jobs workflows", { cron: event.cron, ...result });
-  },
 };
 
 export default worker;
 
 export { AccountRateLimiter };
+export { WorkflowScheduler } from "@/workers/jobs/workflow-scheduler";
 export { ReconcileAccountWorkflow } from "@/workers/jobs/workflows/reconcile-account";
 export { RecoverJournalWorkflow } from "@/workers/jobs/workflows/recover-journal";
 export { RefreshTokensWorkflow } from "@/workers/jobs/workflows/refresh-tokens";

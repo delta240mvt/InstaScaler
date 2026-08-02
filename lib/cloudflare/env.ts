@@ -10,6 +10,11 @@ export type WorkflowBinding = {
   create(options?: { id?: string; params?: unknown }): Promise<unknown>;
 };
 
+export type WorkflowSchedulerBinding = {
+  idFromName(name: string): unknown;
+  get(id: unknown): { bootstrap(): Promise<{ nextAlarm: number }> };
+};
+
 export type LoginThrottleStub = {
   checkAndRecord(success: boolean): Promise<{ allowed: boolean; retryAfterSeconds: number }>;
 };
@@ -52,4 +57,6 @@ export type JobsEnv = DatabaseEnv & {
   ATTACH_NEXT_REEL_WORKFLOW: WorkflowBinding;
   SNAPSHOT_FOLLOWERS_WORKFLOW: WorkflowBinding;
   RETENTION_WORKFLOW: WorkflowBinding;
+  WORKFLOW_SCHEDULER: WorkflowSchedulerBinding;
+  SCHEDULER_BOOTSTRAP_TOKEN: string;
 };

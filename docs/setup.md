@@ -7,7 +7,7 @@
 3. Create Queues `instascaler-events` and `instascaler-events-dlq`.
 4. Keep the Worker names from the three `wrangler.*.jsonc` files.
 
-The Jobs Worker uses five Free-plan Cron Triggers. The hourly trigger starts reconciliation and journal recovery Workflows through their bindings; direct scheduled-Workflow triggers are intentionally not used because Cloudflare requires a paid Workers plan for them.
+The Jobs Worker uses one singleton Durable Object alarm as its hourly scheduler. It starts reconciliation, journal recovery and the appropriate daily Workflows through their bindings. Direct scheduled-Workflow triggers require a paid Workers plan, while account-level Free cron slots may already be occupied by other applications.
 
 ## 2. Set secrets
 
@@ -17,7 +17,7 @@ Generate local values:
 node scripts/generate-admin-secrets.mjs "a-long-unique-password"
 ```
 
-Set `DATABASE_URL`, `ENCRYPTION_KEY` and `APP_BASE_URL` on Core and Jobs. Set the remaining admin and Meta values from `.env.example` on Core. Set `META_GRAPH_API_VERSION` on Jobs when overriding the default API version. Use `wrangler secret put NAME --config wrangler.core.jsonc` or the Cloudflare dashboard; never commit values.
+Set `DATABASE_URL`, `ENCRYPTION_KEY` and `APP_BASE_URL` on Core and Jobs. Set `SCHEDULER_BOOTSTRAP_TOKEN` on Jobs, then authenticate one `POST /internal/bootstrap` request after deployment to arm its Durable Object alarm. Set the remaining admin and Meta values from `.env.example` on Core. Set `META_GRAPH_API_VERSION` on Jobs when overriding the default API version. Use `wrangler secret put NAME --config wrangler.core.jsonc` or the Cloudflare dashboard; never commit values.
 
 `ADMIN_PASSWORD_VERIFIER` is HMAC-SHA256(password, pepper). Changing either value invalidates future logins; existing sessions remain valid until `SESSION_SIGNING_KEY` is rotated.
 

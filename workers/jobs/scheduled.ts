@@ -13,6 +13,22 @@ const CRON_TASKS: Record<string, ScheduledTask[]> = {
 
 export function scheduledTasksForCron(cron: string): ScheduledTask[] { return CRON_TASKS[cron] ?? []; }
 
+export function scheduledTasksForTime(now: Date): ScheduledTask[] {
+  const tasks: ScheduledTask[] = ["reconcile", "recover-journal"];
+  if (now.getUTCHours() === 3) tasks.push("retention");
+  if (now.getUTCHours() === 5) tasks.push("refresh-tokens");
+  if (now.getUTCHours() === 6) tasks.push("attach-next-reel");
+  if (now.getUTCHours() === 7) tasks.push("snapshot-followers");
+  return tasks;
+}
+
+export function nextHourlyAlarm(now = Date.now()): number {
+  const next = new Date(now);
+  next.setUTCMinutes(7, 0, 0);
+  if (next.getTime() <= now) next.setUTCHours(next.getUTCHours() + 1);
+  return next.getTime();
+}
+
 function bindingForTask(env: JobsEnv, task: ScheduledTask): WorkflowBinding {
   if (task === "reconcile") return env.RECONCILE_WORKFLOW;
   if (task === "recover-journal") return env.RECOVER_JOURNAL_WORKFLOW;
@@ -23,8 +39,11 @@ function bindingForTask(env: JobsEnv, task: ScheduledTask): WorkflowBinding {
 }
 
 export async function startScheduledWorkflows(cron: string, env: JobsEnv): Promise<{ started: number; skipped: boolean }> {
+  return startWorkflowTasks(scheduledTasksForCron(cron), env);
+}
+
+export async function startWorkflowTasks(tasks: ScheduledTask[], env: JobsEnv): Promise<{ started: number; skipped: boolean }> {
   if (!env.DATABASE_URL) return { started: 0, skipped: true };
-  const tasks = scheduledTasksForCron(cron);
   await Promise.all(tasks.map(async (task) => {
     const id = workflowExternalId(task).replaceAll(":", "-");
     try { await bindingForTask(env, task).create({ id }); }

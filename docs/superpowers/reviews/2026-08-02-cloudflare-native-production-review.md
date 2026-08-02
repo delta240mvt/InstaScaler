@@ -19,7 +19,7 @@ and all four implementation plans.
 - [x] Queue retries use bounded exponential backoff and reserve the extra read operation.
 - [x] One atomic global budget stops Queue, inbound and Workflow work below conservative daily ceilings across all five accounts; per-account counters remain diagnostic only.
 - [x] Reconciliation remains hourly and is bounded to five accounts and 100 comments per media.
-- [x] Free Worker Cron Triggers start the Workflows; paid direct Workflow schedules are not used.
+- [x] A singleton Durable Object alarm starts Workflows hourly without paid direct Workflow schedules or scarce account-level Cron Trigger slots.
 - [x] Per-account Durable Object capacity is persisted in SQLite.
 - [x] Detailed terminal records expire after 90 days; daily aggregates remain.
 
@@ -43,7 +43,7 @@ and all four implementation plans.
 
 ## Verification and release
 
-- [x] All 132 unit/contract tests, typecheck, lint, Prisma validation and dependency audit pass.
+- [x] All 135 unit/contract tests, typecheck, lint, Prisma validation and dependency audit pass.
 - [x] Playwright production scenarios are discoverable and ready for live credentials.
 - [x] OpenNext, Core and Jobs production bundles build and pass Cloudflare dry-run validation.
 - [x] Core starts in the local Cloudflare `workerd` runtime and returns `200` from `/health`.

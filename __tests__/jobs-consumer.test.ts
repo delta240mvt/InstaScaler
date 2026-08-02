@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { processInstagramJob } from "@/lib/delivery";
-import { consumeQueueBatch, retryDelaySeconds } from "@/workers/jobs/index";
+import jobsWorker, { consumeQueueBatch, retryDelaySeconds } from "@/workers/jobs/index";
+import type { JobsEnv } from "@/lib/cloudflare/env";
 
 describe("Queue consumer", () => {
   it("does not deliver a duplicate external event twice", async () => {
@@ -74,5 +75,17 @@ describe("Cloudflare Queue acknowledgements", () => {
     await consumeQueueBatch({ messages: [{ body: { externalId: "one" }, attempts: 5, ack, retry }] }, async () => ({ status: "retry", code: "TRANSIENT" }), async () => false);
     expect(ack).toHaveBeenCalledOnce();
     expect(retry).not.toHaveBeenCalled();
+  });
+});
+
+describe("Jobs scheduler bootstrap", () => {
+  it("requires its deployment secret before arming the singleton alarm", async () => {
+    const bootstrap = vi.fn(async () => ({ nextAlarm: 123 }));
+    const env = { SCHEDULER_BOOTSTRAP_TOKEN: "secret", WORKFLOW_SCHEDULER: { idFromName: vi.fn(() => "id"), get: vi.fn(() => ({ bootstrap })) } } as unknown as JobsEnv;
+    const denied = await jobsWorker.fetch(new Request("https://jobs.example/internal/bootstrap", { method: "POST" }), env);
+    expect(denied.status).toBe(401);
+    const accepted = await jobsWorker.fetch(new Request("https://jobs.example/internal/bootstrap", { method: "POST", headers: { authorization: "Bearer secret" } }), env);
+    expect(accepted.status).toBe(200);
+    expect(bootstrap).toHaveBeenCalledOnce();
   });
 });

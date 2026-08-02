@@ -30,7 +30,7 @@ The parts most worth scrutiny:
 Never commit any of these, and rotate one if it is exposed anywhere it could be logged:
 
 - `DATABASE_URL`, `ENCRYPTION_KEY`, `SESSION_SIGNING_KEY`
-- `ADMIN_PASSWORD_PEPPER`, `ADMIN_PASSWORD_VERIFIER`
+- `ADMIN_PASSWORD_PEPPER`, `ADMIN_PASSWORD_VERIFIER`, `SCHEDULER_BOOTSTRAP_TOKEN`
 - `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`, `OAUTH_STATE_KEY`
 - Live webhook payloads that contain user data
 

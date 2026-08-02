@@ -18,7 +18,12 @@
     { "binding": "SNAPSHOT_FOLLOWERS_WORKFLOW", "name": "instascaler-snapshot-followers", "class_name": "SnapshotFollowersWorkflow" },
     { "binding": "RETENTION_WORKFLOW", "name": "instascaler-retention", "class_name": "RetentionWorkflow" }
   ]
-  ,"triggers": { "crons": ["7 * * * *", "0 5 * * *", "0 6 * * *", "0 7 * * *", "20 3 * * *"] }
-  ,"durable_objects": { "bindings": [{ "name": "ACCOUNT_RATE_LIMITER", "class_name": "AccountRateLimiter" }] }
-  ,"migrations": [{ "tag": "v1", "new_sqlite_classes": ["AccountRateLimiter"] }]
+  ,"durable_objects": { "bindings": [
+    { "name": "ACCOUNT_RATE_LIMITER", "class_name": "AccountRateLimiter" },
+    { "name": "WORKFLOW_SCHEDULER", "class_name": "WorkflowScheduler" }
+  ] }
+  ,"migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["AccountRateLimiter"] },
+    { "tag": "v2", "new_sqlite_classes": ["WorkflowScheduler"] }
+  ]
 }
