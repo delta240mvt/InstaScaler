@@ -1,4 +1,5 @@
 import { reserveAccountCapacity } from "@/lib/jobs/account-rate-limit";
+import { DurableObject } from "cloudflare:workers";
 
 type Sql = { exec<T extends Record<string, unknown>>(query: string, ...params: unknown[]): Iterable<T> };
 type State = {
@@ -6,9 +7,9 @@ type State = {
   storage: { sql: Sql; setAlarm(timestamp: number): Promise<void> };
 };
 
-export class AccountRateLimiter {
+export class AccountRateLimiter extends DurableObject<unknown> {
   constructor(private readonly state: State, env: unknown) {
-    void env;
+    super(state as never, env);
     void state.blockConcurrencyWhile(async () => {
       state.storage.sql.exec("CREATE TABLE IF NOT EXISTS capacity (hour TEXT PRIMARY KEY, used INTEGER NOT NULL)");
     });

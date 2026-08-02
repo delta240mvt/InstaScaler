@@ -7,4 +7,8 @@ declare module "cloudflare:workers" {
     protected env: Env;
     abstract run(event: WorkflowEvent<Params>, step: WorkflowStep): Promise<unknown>;
   }
+  export abstract class DurableObject<Env = unknown> {
+    protected env: Env;
+    constructor(state: unknown, env: Env);
+  }
 }
