@@ -32,7 +32,7 @@
 - `verifySessionToken(token, now, signingKey): Promise<{ exp: number } | null>`
 - `SESSION_COOKIE = "__Host-instascaler-session"`
 
-- [ ] **Step 1: Write failing auth tests**
+- [x] **Step 1: Write failing auth tests**
 
 Cover valid/invalid HMAC verifier, tampered token, expired token, seven-day expiry, fixed cookie attributes, and malformed base64.
 
@@ -40,7 +40,7 @@ Run: `npx vitest run __tests__/admin-auth.test.ts`
 
 Expected: FAIL because the modules do not exist.
 
-- [ ] **Step 2: Implement Web Crypto auth**
+- [x] **Step 2: Implement Web Crypto auth**
 
 The password verifier is `base64url(HMAC-SHA-256(pepper, UTF8(password)))`. The session payload is versioned JSON `{ "v": 1, "exp": unixSeconds }` and its signature is HMAC-SHA-256 over the encoded payload. Compare decoded fixed-length signatures by XOR accumulation; never return early inside the byte loop.
 
@@ -50,13 +50,13 @@ Cookie output must be equivalent to:
 __Host-instascaler-session=<token>; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800
 ```
 
-- [ ] **Step 3: Verify tests**
+- [x] **Step 3: Verify tests**
 
 Run: `npx vitest run __tests__/admin-auth.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit** (`f3cd2a7`)
 
 ```powershell
 git add lib/admin-auth __tests__/admin-auth.test.ts
@@ -77,15 +77,15 @@ git commit -m "feat: add single-admin session auth"
 - Durable Object RPC: `checkAndRecord(success: boolean): Promise<{ allowed: boolean; retryAfterSeconds: number }>`.
 - Middleware context variable: `admin: true`.
 
-- [ ] **Step 1: Write failing middleware tests**
+- [x] **Step 1: Write failing middleware tests**
 
 Test missing cookie `401`, invalid cookie `401`, valid cookie success, invalid Origin `403` on POST/PATCH/DELETE, five failed logins allowed, sixth rejected with `429`, and success clearing the failure window.
 
-- [ ] **Step 2: Implement the throttle**
+- [x] **Step 2: Implement the throttle**
 
 Store timestamps in SQLite-backed Durable Object storage under `failures`. Remove values older than 900 seconds. Reject when five retained failures exist. Use the request IP-derived object ID so independent addresses do not block each other.
 
-- [ ] **Step 3: Add auth endpoints**
+- [x] **Step 3: Add auth endpoints**
 
 Implement:
 
@@ -97,7 +97,7 @@ GET  /api/auth/session
 
 Read `ADMIN_LOGIN`, `ADMIN_PASSWORD_PEPPER`, `ADMIN_PASSWORD_VERIFIER`, and `SESSION_SIGNING_KEY` only from Worker secrets. Return generic `invalid_credentials`; never identify which field failed.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `npx vitest run __tests__/core-auth.test.ts && npx wrangler deploy --dry-run --config wrangler.core.jsonc`
 

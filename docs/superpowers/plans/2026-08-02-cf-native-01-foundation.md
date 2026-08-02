@@ -273,7 +273,7 @@ npx wrangler deploy --dry-run --config wrangler.jobs.jsonc
 
 Expected: PASS and both bundles report sizes below the Free limit.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit** (`53589eb`)
 
 ```powershell
 git add lib/cloudflare lib/jobs workers __tests__/job-contracts.test.ts

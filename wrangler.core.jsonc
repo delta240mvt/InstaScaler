@@ -4,5 +4,9 @@
   "main": "workers/core/index.ts",
   "compatibility_date": "2026-08-02",
   "compatibility_flags": ["nodejs_compat"],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [{ "name": "LOGIN_THROTTLE", "class_name": "LoginThrottle" }]
+  },
+  "migrations": [{ "tag": "v1", "new_classes": ["LoginThrottle"] }]
 }

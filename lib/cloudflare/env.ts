@@ -5,10 +5,24 @@ export type QueueBinding = {
   send(message: InstagramJob, options?: { delaySeconds?: number }): Promise<void>;
 };
 
+export type LoginThrottleStub = {
+  checkAndRecord(success: boolean): Promise<{ allowed: boolean; retryAfterSeconds: number }>;
+};
+
+export type LoginThrottleBinding = {
+  idFromName(name: string): unknown;
+  get(id: unknown): LoginThrottleStub;
+};
+
 export type CoreEnv = DatabaseEnv & {
+  ADMIN_LOGIN: string;
   ADMIN_SESSION_SECRET: string;
+  ADMIN_PASSWORD_PEPPER: string;
+  ADMIN_PASSWORD_VERIFIER: string;
   META_APP_SECRET: string;
   META_WEBHOOK_VERIFY_TOKEN: string;
+  SESSION_SIGNING_KEY: string;
+  LOGIN_THROTTLE: LoginThrottleBinding;
   INSTAGRAM_JOBS: QueueBinding;
 };
 
