@@ -10,11 +10,13 @@ import { LoginThrottle } from "@/workers/core/login-throttle";
 import { requireAdmin, requireSameOrigin } from "@/workers/core/middleware/auth";
 import { automationRoutes } from "@/workers/core/routes/automations";
 import { instagramRoutes } from "@/workers/core/routes/instagram";
+import { webhookRoutes } from "@/workers/core/routes/webhook";
 
 export function createCoreApp(options?: { db?: AutomationStore & AccountDb }) {
   const app = new Hono<{ Bindings: CoreEnv }>();
 
   app.get("/health", (context) => context.json({ status: "ok", service: "core" }));
+  app.route("/", webhookRoutes());
   app.use("/api/*", requireSameOrigin);
   app.post("/api/auth/login", async (context) => {
     const body = await context.req.json<{ login?: unknown; password?: unknown }>().catch(() => ({}));

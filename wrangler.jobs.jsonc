@@ -4,5 +4,7 @@
   "main": "workers/jobs/index.ts",
   "compatibility_date": "2026-08-02",
   "compatibility_flags": ["nodejs_compat"],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  "r2_buckets": [{ "binding": "EVENT_JOURNAL", "bucket_name": "instascaler-event-journal" }],
+  "queues": { "consumers": [{ "queue": "instascaler-events", "max_batch_size": 10, "max_batch_timeout": 5 }] }
 }

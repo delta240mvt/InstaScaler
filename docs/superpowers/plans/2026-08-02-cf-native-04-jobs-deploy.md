@@ -38,19 +38,19 @@
 - R2 binding name: `EVENT_JOURNAL`.
 - Queue binding name: `INSTAGRAM_EVENTS`.
 
-- [ ] **Step 1: Write failing journal tests**
+- [x] **Step 1: Write failing journal tests**
 
 Test valid Meta signature, invalid signature `401`, deterministic R2 key, payload below 64 KB, R2 write before Queue send, no `200` when either persistence operation fails, and retained R2 object when Queue send fails.
 
-- [ ] **Step 2: Implement normalized envelopes**
+- [x] **Step 2: Implement normalized envelopes**
 
 Store only fields needed to process comments, postbacks, and inbound messages plus `receivedAt`, `externalId`, `kind`, and schema `version: 1`. Use keys `events/YYYY-MM-DD/<sha256-external-id>.json`. Never store request headers, access tokens, cookies, or unrelated Meta payload fields.
 
-- [ ] **Step 3: Bind R2 and Queue**
+- [x] **Step 3: Bind R2 and Queue**
 
 Declare the same R2 bucket in Core and Jobs configs; Core is producer and Jobs is consumer. Queue retention remains Free default 24 hours; R2 lifecycle is controlled by successful processing and recovery.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run: `npx vitest run __tests__/webhook-journal.test.ts`
 

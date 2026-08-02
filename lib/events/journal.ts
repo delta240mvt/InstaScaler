@@ -1,0 +1,44 @@
+const encoder = new TextEncoder();
+
+export type EventEnvelope = {
+  version: 1;
+  externalId: string;
+  instagramAccountId: string;
+  kind: "COMMENT" | "POSTBACK" | "MESSAGE";
+  receivedAt: string;
+  payload: Record<string, string | number | boolean | null>;
+};
+
+export type JournalBucket = {
+  put(key: string, value: string, options?: { httpMetadata?: { contentType: string } }): Promise<unknown>;
+  get(key: string): Promise<{ text(): Promise<string> } | null>;
+  delete?(key: string): Promise<void>;
+};
+
+function hex(bytes: Uint8Array) { return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(""); }
+function equal(left: Uint8Array, right: Uint8Array) { if (left.length !== right.length) return false; let diff = 0; for (let i = 0; i < left.length; i += 1) diff |= left[i] ^ right[i]; return diff === 0; }
+
+export async function verifyMetaSignature(body: string, header: string | undefined, secret: string): Promise<boolean> {
+  if (!header?.startsWith("sha256=")) return false;
+  const actual = new Uint8Array((header.slice(7).match(/.{1,2}/g) ?? []).map((part) => Number.parseInt(part, 16)));
+  if (actual.length !== 32 || actual.some(Number.isNaN)) return false;
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return equal(new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(body))), actual);
+}
+
+export async function journalEvent(bucket: JournalBucket, envelope: EventEnvelope): Promise<{ key: string; externalId: string }> {
+  const serialized = JSON.stringify(envelope);
+  if (encoder.encode(serialized).byteLength >= 64 * 1024) throw new Error("EVENT_TOO_LARGE");
+  const digest = hex(new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(envelope.externalId))));
+  const key = `events/${envelope.receivedAt.slice(0, 10)}/${digest}.json`;
+  await bucket.put(key, serialized, { httpMetadata: { contentType: "application/json" } });
+  return { key, externalId: envelope.externalId };
+}
+
+export async function loadJournalEvent(bucket: Pick<JournalBucket, "get">, key: string): Promise<EventEnvelope> {
+  const object = await bucket.get(key);
+  if (!object) throw new Error("JOURNAL_EVENT_NOT_FOUND");
+  return JSON.parse(await object.text()) as EventEnvelope;
+}
+
+export async function deleteJournalEvent(bucket: Required<Pick<JournalBucket, "delete">>, key: string): Promise<void> { await bucket.delete(key); }
