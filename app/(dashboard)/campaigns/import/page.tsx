@@ -83,10 +83,11 @@ export default function ImportCampaignsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold">Import campaigns</h1>
-        <p className="text-sm text-muted mt-1">
+    <div className="mx-auto max-w-3xl space-y-7">
+      <header>
+        <p className="app-kicker">Bulk setup</p>
+        <h1 className="app-page-title mt-2">Import campaigns</h1>
+        <p className="app-page-description mt-2">
           Paste a CSV with one row per campaign. Each row opens in the builder
           prefilled and editable, so you can review it and pick the reel before
           saving. Required columns are{" "}
@@ -101,7 +102,7 @@ export default function ImportCampaignsPage() {
           <code className="text-accent">{"{link}"}</code> in the message to
           insert the tracked link.
         </p>
-      </div>
+      </header>
 
       {error && (
         <div className="p-4 rounded bg-error/10 border border-error/20 text-error text-sm">
@@ -124,14 +125,15 @@ export default function ImportCampaignsPage() {
         </div>
       )}
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-foreground">CSV</label>
+      <section className="app-card space-y-3 p-5 sm:p-6">
+        <label className="app-label" htmlFor="campaign-csv">Campaign CSV</label>
         <textarea
           value={csv}
           onChange={(e) => setCsv(e.target.value)}
           placeholder={SAMPLE}
           rows={10}
-          className="w-full px-4 py-3 rounded bg-surface border border-border text-sm font-mono text-foreground placeholder:text-zinc-600 focus:border-accent/40 focus:outline-none resize-y"
+          id="campaign-csv"
+          className="app-field min-h-72 w-full resize-y px-4 py-3 font-mono text-sm"
         />
         <button
           type="button"
@@ -140,18 +142,18 @@ export default function ImportCampaignsPage() {
         >
           Fill with a sample
         </button>
-      </div>
+      </section>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
         <button
           onClick={startImport}
-          className="px-5 py-2 rounded bg-accent text-sm font-medium text-white hover:bg-accent-hover"
+          className="app-button app-button-primary w-full sm:w-auto"
         >
           Review and import
         </button>
         <button
           onClick={() => router.push("/campaigns")}
-          className="px-5 py-2 rounded text-sm text-muted hover:text-foreground border border-border"
+          className="app-button app-button-secondary w-full sm:w-auto"
         >
           Cancel
         </button>

@@ -42,18 +42,18 @@ export default function KeywordInput({ keywords, onChange, max = 10 }: KeywordIn
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-2 p-3 rounded bg-surface border border-border min-h-[48px]">
+      <div className="app-field flex min-h-14 flex-wrap gap-2 p-2.5">
         {keywords.map((keyword) => (
           <span
             key={keyword}
-            className="inline-flex items-center gap-2 px-2 py-1 rounded border border-border text-xs"
+            className="inline-flex items-center gap-2 rounded-lg border border-accent/20 bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent"
           >
             {keyword}
             <button
               type="button"
               onClick={() => removeKeyword(keyword)}
               aria-label={`Remove ${keyword}`}
-              className="text-muted hover:text-error"
+              className="min-h-8 text-muted hover:text-error"
             >
               Remove
             </button>

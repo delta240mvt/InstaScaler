@@ -126,11 +126,11 @@ export default function CampaignDetailPage() {
   }
 
   if (loading) {
-    return <div className="panel h-64 rounded" />;
+    return <div className="app-skeleton h-64 rounded-2xl" />;
   }
   if (notFound || !campaign) {
     return (
-      <div className="panel rounded p-8 text-center">
+      <div className="app-card p-8 text-center">
         <p className="text-sm text-muted">Campaign not found.</p>
         <button
           onClick={() => router.push("/campaigns")}
@@ -168,7 +168,7 @@ export default function CampaignDetailPage() {
   ];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
+    <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,360px)_1fr] lg:gap-8">
       {/* Left: config summary */}
       <div className="space-y-6">
         <div className="flex items-center gap-2">
@@ -326,7 +326,7 @@ export default function CampaignDetailPage() {
         {tab === "insights" && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {metrics.map((m) => (
-              <div key={m.label} className="panel rounded p-4">
+              <div key={m.label} className="app-card p-4">
                 <p className="text-sm text-muted">{m.label}</p>
                 <p className="mt-1 text-2xl font-semibold text-foreground">
                   {m.value}
@@ -381,10 +381,10 @@ export default function CampaignDetailPage() {
 
 function Summary({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-2">
+    <section className="app-card space-y-2 p-4">
       <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       {children}
-    </div>
+    </section>
   );
 }
 

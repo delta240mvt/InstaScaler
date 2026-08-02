@@ -152,7 +152,7 @@ function StatusBar() {
 function Phone({ children }: { children: React.ReactNode }) {
   const btn = "absolute w-[3px] rounded-sm bg-gradient-to-r from-zinc-500 to-zinc-700";
   return (
-    <div className="relative w-[300px]">
+    <div className="relative w-full max-w-[300px]">
       {/* Left side buttons: action, volume up, volume down */}
       <span className={`${btn} -left-[2px] top-[96px] h-7`} />
       <span className={`${btn} -left-[2px] top-[140px] h-12`} />
@@ -554,13 +554,13 @@ export default function CampaignPreview(props: CampaignPreviewProps) {
         )}
       </Phone>
 
-      <div className="inline-flex rounded-full bg-surface p-1">
+      <div className="flex max-w-full flex-wrap justify-center rounded-2xl bg-surface-subtle p-1" aria-label="Preview screen">
         {tabs.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => onTabChange(t.key)}
-            className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+            className={`min-h-11 rounded-xl px-3 py-2 text-sm transition-colors ${
               activeTab === t.key
                 ? "bg-background font-medium text-foreground ring-1 ring-accent/40"
                 : "text-muted hover:text-foreground"

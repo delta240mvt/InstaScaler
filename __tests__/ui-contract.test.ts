@@ -87,3 +87,24 @@ describe("analytics hierarchy", () => {
     expect(report).toContain("app-page-title");
   });
 });
+
+describe("campaign workflow UIX", () => {
+  it("gives campaign discovery a semantic header and touch-safe primary actions", () => {
+    const campaigns = source("app/(dashboard)/campaigns/page.tsx");
+    expect(campaigns).toContain("app-page-title");
+    expect(campaigns).toContain("app-button-primary");
+    expect(campaigns).toContain('aria-label={`');
+  });
+
+  it("keeps builder actions available on mobile and fields semantic", () => {
+    const builder = source("components/campaign-builder.tsx");
+    expect(builder).toContain("sticky bottom-0");
+    expect(builder).toContain("app-field");
+    expect(builder).toContain("app-card");
+  });
+
+  it("presents import and detail pages as premium responsive surfaces", () => {
+    expect(source("app/(dashboard)/campaigns/import/page.tsx")).toContain("app-page-title");
+    expect(source("app/(dashboard)/campaigns/[id]/page.tsx")).toContain("app-card");
+  });
+});

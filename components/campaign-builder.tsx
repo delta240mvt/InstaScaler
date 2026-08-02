@@ -69,10 +69,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-3">
+    <section className="app-card space-y-3 p-4 sm:p-5">
       <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       {children}
-    </div>
+    </section>
   );
 }
 
@@ -116,13 +116,13 @@ function Toggle({
     <button
       type="button"
       onClick={onToggle}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+      className={`relative h-11 w-12 shrink-0 rounded-full transition-colors ${
         on ? "bg-accent" : "bg-zinc-300"
       }`}
     >
       <span
-        className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${
-          on ? "left-6" : "left-1"
+        className={`absolute top-3.5 h-4 w-4 rounded-full bg-white transition-transform ${
+          on ? "left-7" : "left-1"
         }`}
       />
     </button>
@@ -533,12 +533,12 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
   }
 
   if (loading) {
-    return <div className="panel h-64 rounded" />;
+    return <div className="app-skeleton h-64 rounded-2xl" />;
   }
 
   if (notFound) {
     return (
-      <div className="panel rounded p-8 text-center">
+      <div className="app-card p-8 text-center">
         <p className="text-sm text-muted">Campaign not found.</p>
         <button
           onClick={() => router.push("/campaigns")}
@@ -565,7 +565,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
       )}
 
       {/* Top bar */}
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+      <div className="sticky bottom-0 z-20 -mx-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-y border-border bg-background/95 px-3 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
         <div className="flex min-w-0 items-center gap-3">
           {mode === "edit" ? (
             <>
@@ -619,14 +619,14 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
             type="button"
             onClick={() => handleSubmit(mode === "new" ? true : isActive)}
             disabled={saving}
-            className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+            className="app-button app-button-primary disabled:opacity-50"
           >
             {saving ? "Saving…" : mode === "new" ? "Go Live" : "Save changes"}
           </button>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[300px_1fr] lg:gap-8">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,560px)_minmax(300px,1fr)] lg:gap-8">
       {/* Left: controls */}
       <div className="space-y-8">
         {error && (
@@ -644,7 +644,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. YC referral"
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none"
+            className="app-field w-full"
             maxLength={100}
           />
           {accounts.length > 1 && (

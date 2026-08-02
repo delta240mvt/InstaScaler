@@ -172,27 +172,27 @@ git commit -m "feat: refine analytics experience"
 - Preserve the complete existing campaign payload and form submission behavior.
 - Preserve `CampaignPreview`, `KeywordInput` and `PostPicker` public props.
 
-- [ ] **Step 1: Add failing mobile/action contracts**
+- [x] **Step 1: Add failing mobile/action contracts**
 
 Assert builder navigation, sticky action region, explicit labels, touch-safe toggles and campaign-card action labels exist without changing contract defaults.
 
-- [ ] **Step 2: Run focused tests and confirm failure**
+- [x] **Step 2: Run focused tests and confirm failure**
 
 Run: `npx vitest run __tests__/campaign-builder-contract.test.ts __tests__/ui-contract.test.ts`
 
-- [ ] **Step 3: Polish campaign list**
+- [x] **Step 3: Polish campaign list**
 
 Create a premium page header, search/filter toolbar, responsive cards, clear active/paused hierarchy, stronger media treatment, compact analytics and an accessible action menu. Add useful empty/loading states.
 
-- [ ] **Step 4: Polish builder and detail surfaces**
+- [x] **Step 4: Polish builder and detail surfaces**
 
 Group fields into concise cards, make labels/helper text consistent, clarify triggers and follow gate, improve post/keyword selection, keep preview secondary and add a mobile-safe sticky save area.
 
-- [ ] **Step 5: Polish import**
+- [x] **Step 5: Polish import**
 
 Improve drop/select affordance, instructions, validation summary and responsive result presentation while preserving CSV behavior.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run: `npx vitest run __tests__/campaign-builder-contract.test.ts __tests__/csv.test.ts __tests__/ui-contract.test.ts && npm run typecheck && npm run lint`
 

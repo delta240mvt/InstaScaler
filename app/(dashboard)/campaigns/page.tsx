@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AccountSelect, { type AccountOption } from "@/components/account-select";
+import { Icon } from "@/components/ui-icons";
 import { readCache, writeCache } from "@/lib/client-cache";
 
 interface Campaign {
@@ -297,7 +298,7 @@ export default function CampaignsPage() {
     return (
       <div className="space-y-4">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="panel rounded p-6 h-36" />
+          <div key={i} className="app-skeleton h-36 rounded-2xl" />
         ))}
       </div>
     );
@@ -318,9 +319,11 @@ export default function CampaignsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm text-muted">
+          <p className="app-kicker">Automation</p>
+          <h1 className="app-page-title mt-2">Campaigns</h1>
+          <p className="app-page-description mt-2">
             {filtered.length}
             {filtered.length !== automations.length
               ? ` of ${automations.length}`
@@ -338,27 +341,28 @@ export default function CampaignsPage() {
           )}
           <Link
             href="/campaigns/import"
-            className="flex-1 rounded border border-border px-4 py-2 text-center text-sm font-medium text-muted hover:text-foreground sm:flex-none"
+            className="app-button app-button-secondary flex-1 sm:flex-none"
           >
             Import
           </Link>
           <Link
             href="/campaigns/new"
-            className="flex-1 rounded bg-accent px-4 py-2 text-center text-sm font-medium text-white hover:bg-accent-hover sm:flex-none"
+            className="app-button app-button-primary flex-1 sm:flex-none"
           >
-            New Campaign
+            <Icon name="plus" size={18} /> New campaign
           </Link>
         </div>
-      </div>
+      </header>
 
       {/* Search + status filter */}
       {automations.length > 0 && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="app-card flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search campaigns by name, keyword, or message…"
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none"
+            className="app-field w-full"
+            aria-label="Search campaigns"
           />
           <div className="inline-flex shrink-0 rounded-lg bg-surface p-1">
             {(["all", "active", "paused"] as const).map((s) => (
@@ -366,7 +370,7 @@ export default function CampaignsPage() {
                 key={s}
                 type="button"
                 onClick={() => setStatusFilter(s)}
-                className={`rounded-md px-3 py-1.5 text-sm capitalize transition-colors ${
+                className={`min-h-11 rounded-md px-3 py-2 text-sm capitalize transition-colors ${
                   statusFilter === s
                     ? "bg-background font-medium text-foreground ring-1 ring-accent/40"
                     : "text-muted hover:text-foreground"
@@ -381,14 +385,14 @@ export default function CampaignsPage() {
 
       {/* Empty state */}
       {automations.length === 0 && (
-        <div className="panel rounded p-8 text-center sm:p-12">
+        <div className="app-card p-8 text-center sm:p-12">
           <h3 className="text-lg font-semibold mb-2">No campaigns yet</h3>
           <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
             Create your first comment-to-DM campaign to turn a post or reel into a measurable conversation flow.
           </p>
           <Link
             href="/campaigns/new"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-accent text-sm font-semibold text-white hover:bg-accent-hover transition-colors"
+            className="app-button app-button-primary"
           >
             Create Campaign
           </Link>
@@ -397,7 +401,7 @@ export default function CampaignsPage() {
 
       {/* No matches for the current filter */}
       {automations.length > 0 && filtered.length === 0 && (
-        <div className="panel rounded p-8 text-center text-sm text-muted">
+        <div className="app-card p-8 text-center text-sm text-muted">
           No campaigns match your search.
         </div>
       )}
@@ -410,7 +414,7 @@ export default function CampaignsPage() {
           <div
             key={auto.id}
             onClick={() => router.push(`/campaigns/${auto.id}`)}
-            className="panel rounded p-4 hover:border-border-hover transition-all cursor-pointer"
+            className="app-card app-card-interactive cursor-pointer p-4 sm:p-5"
           >
             {/* Wraps rather than compressing: on a phone the action buttons drop
                 to their own line instead of squeezing the campaign summary. */}
@@ -565,6 +569,8 @@ export default function CampaignsPage() {
                 {/* Toggle */}
                 <button
                   onClick={() => toggleActive(auto.id, auto.isActive)}
+                  aria-label={`${auto.isActive ? "Pause" : "Activate"} ${auto.name}`}
+                  aria-pressed={auto.isActive}
                   className={`
                     relative w-11 h-6 rounded-full transition-colors
                     ${auto.isActive ? "bg-accent" : "bg-zinc-300"}
@@ -585,7 +591,7 @@ export default function CampaignsPage() {
                       setMenuOpenId((cur) => (cur === auto.id ? null : auto.id))
                     }
                     aria-label="More actions"
-                    className="px-2 py-1 rounded text-lg leading-none text-muted hover:text-foreground"
+                    className="grid size-11 place-items-center rounded-xl text-lg leading-none text-muted hover:bg-surface-subtle hover:text-foreground"
                   >
                     ⋯
                   </button>

@@ -132,7 +132,7 @@ export default function PostPicker({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search your posts by caption…"
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none"
+          className="app-field w-full"
         />
         <span className="shrink-0 text-xs text-muted">{posts.length}</span>
       </div>
@@ -148,7 +148,7 @@ export default function PostPicker({
               Already used
             </p>
           )}
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-64 overflow-y-auto p-1">
+          <div className="grid max-h-80 grid-cols-3 gap-2 overflow-y-auto p-1 sm:grid-cols-4">
             {visible.map((post) => {
               const isSelected = selectedPostId === post.id;
               const usedByName = usedPostIds?.[post.id];
@@ -169,7 +169,7 @@ export default function PostPicker({
             aria-pressed={isSelected}
             title={isUsed ? `Already used by "${usedByName}"` : undefined}
             className={`
-              relative aspect-square rounded overflow-hidden border-2
+              relative aspect-square overflow-hidden rounded-xl border-2 transition-transform hover:-translate-y-0.5
               ${
                 isSelected
                   ? "border-accent"
