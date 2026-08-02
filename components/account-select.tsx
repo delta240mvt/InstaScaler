@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "@/components/ui-icons";
+
 export interface AccountOption {
   id: string;
   username: string;
@@ -23,22 +25,26 @@ export default function AccountSelect({
   label = "Instagram account",
 }: AccountSelectProps) {
   return (
-    <label className="flex flex-col gap-2 text-sm">
-      <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+    <label className="flex min-w-0 flex-col gap-1.5 text-sm">
+      <span className="app-label">
         {label}
       </span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-w-52 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent/40"
-      >
-        {includeAll && <option value="all">All accounts</option>}
-        {accounts.map((account) => (
-          <option key={account.id} value={account.id}>
-            @{account.username}
-          </option>
-        ))}
-      </select>
+      <span className="relative block min-w-0">
+        <Icon name="instagram" size={17} className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted" />
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="app-field min-w-0 appearance-none pl-10 pr-10 sm:min-w-52"
+        >
+          {includeAll && <option value="all">All accounts</option>}
+          {accounts.map((account) => (
+            <option key={account.id} value={account.id}>
+              @{account.username}
+            </option>
+          ))}
+        </select>
+        <Icon name="chevronDown" size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
+      </span>
     </label>
   );
 }

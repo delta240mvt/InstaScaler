@@ -36,7 +36,7 @@
 - Produces `Icon({ name, size?, className? })` with a closed `IconName` union.
 - Existing component props remain source-compatible.
 
-- [ ] **Step 1: Write the visual contract test**
+- [x] **Step 1: Write the visual contract test**
 
 Add source-level assertions that tokens, mobile field sizing, reduced motion, button classes and icon names exist. The test must import no DOM renderer:
 
@@ -47,23 +47,23 @@ expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*font-size: 16px/);
 expect(readFileSync(resolve("components/ui-icons.tsx"), "utf8")).toContain('export type IconName');
 ```
 
-- [ ] **Step 2: Run the test and confirm it fails**
+- [x] **Step 2: Run the test and confirm it fails**
 
 Run: `npx vitest run __tests__/ui-contract.test.ts`
 
 Expected: FAIL because semantic premium primitives do not exist.
 
-- [ ] **Step 3: Implement tokens and primitives**
+- [x] **Step 3: Implement tokens and primitives**
 
 Define the selected palette, typography scale, shadows, radii, transitions and semantic classes. Build an SVG icon map for navigation, actions, status and password visibility. Upgrade shared metric, status and account controls to consume the semantic classes.
 
-- [ ] **Step 4: Verify the foundation**
+- [x] **Step 4: Verify the foundation**
 
 Run: `npx vitest run __tests__/ui-contract.test.ts __tests__/campaign-builder-contract.test.ts && npm run typecheck && npm run lint`
 
 Expected: all commands pass without errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/globals.css components/ui-icons.tsx components/stat-card.tsx components/status-badge.tsx components/account-select.tsx __tests__/ui-contract.test.ts
