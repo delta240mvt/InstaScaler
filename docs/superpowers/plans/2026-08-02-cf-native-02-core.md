@@ -103,7 +103,7 @@ Run: `npx vitest run __tests__/core-auth.test.ts && npx wrangler deploy --dry-ru
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit** (`6153b37`)
 
 ```powershell
 git add workers/core wrangler.core.jsonc __tests__/core-auth.test.ts
