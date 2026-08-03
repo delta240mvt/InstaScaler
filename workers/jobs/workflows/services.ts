@@ -5,6 +5,7 @@ import { journalEvent, loadJournalEvent, type EventEnvelope } from "@/lib/events
 import { getRecentMediaComments, getUserInfo, getUserMedia, refreshLongLivedToken } from "@/lib/meta/client";
 import { reserveQueueJob, reserveWorkflowStep } from "@/lib/jobs/budget";
 import { PermissionError, TokenExpiredError } from "@/lib/meta/client";
+import { assignNextMedia } from "@/lib/workflows/next-media";
 
 export type WorkflowTask = "reconcile" | "recover-journal" | "refresh-tokens" | "attach-next-reel" | "snapshot-followers" | "retention";
 type Db = ReturnType<typeof createPrisma>;
@@ -104,13 +105,18 @@ async function attachNextReel(db: Db, env: JobsEnv) {
   let attached = 0;
   for (const account of await accounts(db)) {
     attached += await runAccountWorkflowStep(db, "attach-next-reel", account.id, async () => {
-      const pending = await db.automation.findFirst({ where: { instagramAccountId: account.id, pendingNextReel: true, isActive: true }, orderBy: { createdAt: "asc" } });
-      if (!pending) return 0;
+      const pending = await db.automation.findMany({
+        where: { instagramAccountId: account.id, pendingNextReel: true, isActive: true },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, createdAt: true },
+      });
+      if (pending.length === 0) return 0;
       const media = await getUserMedia(await decryptToken(account.accessToken, env.ENCRYPTION_KEY), 25);
-      const reel = media.find((item) => item.media_type === "VIDEO" || item.media_product_type === "REELS");
-      if (!reel) return 0;
-      await db.automation.update({ where: { id: pending.id }, data: { postId: reel.id, postUrl: reel.permalink ?? null, pendingNextReel: false } });
-      return 1;
+      const assignments = assignNextMedia(pending, media);
+      await Promise.all(assignments.map(({ automation, media: publication }) =>
+        db.automation.update({ where: { id: automation.id }, data: { postId: publication.id, postUrl: publication.permalink ?? null, pendingNextReel: false } })
+      ));
+      return assignments.length;
     }, 0);
   }
   return { attached };
@@ -157,7 +163,8 @@ export async function executeWorkflowTask(task: WorkflowTask, env: JobsEnv): Pro
 }
 
 export function workflowExternalId(task: WorkflowTask, now = new Date()): string {
-  return `workflow:${task}:${now.toISOString().slice(0, task === "reconcile" || task === "recover-journal" ? 13 : 10)}`;
+  const hourly = task === "reconcile" || task === "recover-journal" || task === "attach-next-reel";
+  return `workflow:${task}:${now.toISOString().slice(0, hourly ? 13 : 10)}`;
 }
 
 export async function withJobRun(task: WorkflowTask, env: JobsEnv, execute: () => Promise<unknown>) {

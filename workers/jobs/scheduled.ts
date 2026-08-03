@@ -4,9 +4,8 @@ import { workflowExternalId } from "@/workers/jobs/workflows/services";
 export type ScheduledTask = "reconcile" | "recover-journal" | "refresh-tokens" | "attach-next-reel" | "snapshot-followers" | "retention";
 
 const CRON_TASKS: Record<string, ScheduledTask[]> = {
-  "7 * * * *": ["reconcile", "recover-journal"],
+  "7 * * * *": ["reconcile", "recover-journal", "attach-next-reel"],
   "0 5 * * *": ["refresh-tokens"],
-  "0 6 * * *": ["attach-next-reel"],
   "0 7 * * *": ["snapshot-followers"],
   "20 3 * * *": ["retention"],
 };
@@ -14,10 +13,9 @@ const CRON_TASKS: Record<string, ScheduledTask[]> = {
 export function scheduledTasksForCron(cron: string): ScheduledTask[] { return CRON_TASKS[cron] ?? []; }
 
 export function scheduledTasksForTime(now: Date): ScheduledTask[] {
-  const tasks: ScheduledTask[] = ["reconcile", "recover-journal"];
+  const tasks: ScheduledTask[] = ["reconcile", "recover-journal", "attach-next-reel"];
   if (now.getUTCHours() === 3) tasks.push("retention");
   if (now.getUTCHours() === 5) tasks.push("refresh-tokens");
-  if (now.getUTCHours() === 6) tasks.push("attach-next-reel");
   if (now.getUTCHours() === 7) tasks.push("snapshot-followers");
   return tasks;
 }
