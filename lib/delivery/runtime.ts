@@ -16,6 +16,7 @@ import { PermissionError, TokenExpiredError } from "@/lib/meta/client";
 import type { JobResult } from "@/lib/delivery";
 import { reserveQueueJob, validateDelaySeconds, type BudgetDb } from "@/lib/jobs/budget";
 import { initialCommentDmPlan } from "@/lib/delivery/comment-opening-flow";
+import { directDeliveryLink } from "@/lib/delivery/link-destination";
 
 type Automation = {
   id: string; instagramAccountId: string; name: string; postId: string | null; matchAnyPost: boolean;
@@ -24,7 +25,7 @@ type Automation = {
   requireFollowBeforeFreebie: boolean; followPromptMessage: string | null; followPromptButtonLabel: string | null;
   followUpEnabled: boolean; followUpMessage: string | null; followUpDelayMinutes: number;
   publicReplyEnabled: boolean; publicReplyMessage: string | null; publicReplyMessages: string[];
-  trackedLinks?: Array<{ slug: string }>;
+  trackedLinks?: Array<{ slug: string; destinationUrl?: string | null }>;
 };
 type Account = { id: string; instagramId: string; accessToken: string; webhookSubscribed: boolean; automations?: Automation[] };
 type DeliveryDb = BudgetDb & {
@@ -67,9 +68,8 @@ function text(payload: EventEnvelope, key: string): string { const value = paylo
 function render(message: string, name: string, link?: string) {
   return message.replaceAll("{username}", name || "there").replaceAll("{link}", link ?? "");
 }
-function trackedUrl(env: JobsEnv, automation: Automation): string | undefined {
-  const slug = automation.trackedLinks?.[0]?.slug;
-  return slug ? `${env.APP_BASE_URL.replace(/\/$/, "")}/r/${slug}` : undefined;
+function deliveryUrl(automation: Automation): string | undefined {
+  return directDeliveryLink(automation.trackedLinks);
 }
 async function reserve(env: JobsEnv, instagramId: string, amount = 1): Promise<boolean> {
   const binding = env.ACCOUNT_RATE_LIMITER;
@@ -98,7 +98,7 @@ async function deliverComment(db: DeliveryDb, env: JobsEnv, envelope: EventEnvel
   if (!await reserve(env, account.instagramId, automation.publicReplyEnabled ? 2 : 1)) return { status: "retry", code: "ACCOUNT_RATE_LIMIT" };
   const token = await decryptToken(account.accessToken, env.ENCRYPTION_KEY);
   const plan = initialCommentDmPlan({ openingDmEnabled: automation.openingDmEnabled, requireFollowBeforeFreebie: automation.requireFollowBeforeFreebie });
-  const link = trackedUrl(env, automation);
+  const link = deliveryUrl(automation);
   const externalId = `comment:${automation.id}:${commentId}`;
   if (!await reserveDelivery(db, { externalId, automationId: automation.id, instagramAccountId: account.id, commenterId: userId })) return { status: "skipped", code: "DUPLICATE_DELIVERY" };
   try {
@@ -155,7 +155,7 @@ async function deliverPostback(db: DeliveryDb, env: JobsEnv, envelope: EventEnve
   if (!await reserve(env, account.instagramId)) return { status: "retry", code: "ACCOUNT_RATE_LIMIT" };
   if (!await reserveDelivery(db, { externalId, automationId: automation.id, instagramAccountId: account.id, commenterId: userId })) return { status: "skipped", code: "DUPLICATE_DELIVERY" };
   try {
-    await sendDirectMessage(token, account.instagramId, userId, render(automation.dmMessage, text(envelope, "username"), trackedUrl(env, automation)));
+    await sendDirectMessage(token, account.instagramId, userId, render(automation.dmMessage, text(envelope, "username"), deliveryUrl(automation)));
     await record(db, automation, account, externalId, userId, "SENT");
   } catch (error) {
     await db.dmLog.update({ where: { externalId }, data: { status: "RETRYING", errorMessage: error instanceof Error ? error.message.slice(0, 1000) : "Delivery failed" } });

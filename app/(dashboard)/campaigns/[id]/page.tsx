@@ -267,12 +267,11 @@ export default function CampaignDetailPage() {
                 <div key={i} className="space-y-1">
                   <div className="rounded border border-border bg-surface px-3 py-2">
                     <p className="select-all break-all font-mono text-xs text-foreground">
-                      {link.trackedUrl ?? link.destinationUrl}
+                      {link.destinationUrl}
                     </p>
                   </div>
                   <p className="text-xs text-muted">
-                    {link.label ? `${link.label} · ` : ""}redirects to{" "}
-                    <span className="break-all">{link.destinationUrl}</span>
+                    {link.label ? `${link.label} · ` : ""}sent directly
                   </p>
                 </div>
               ))}
@@ -356,7 +355,6 @@ export default function CampaignDetailPage() {
             hasLink={hasLink}
             linkButtonLabel={campaign.linkButtonLabel ?? "Open link"}
             linkUrl={
-              campaign.trackedLinks?.[0]?.trackedUrl ??
               campaign.trackedLinks?.[0]?.destinationUrl
             }
             hasSecondLink={hasSecondLink}

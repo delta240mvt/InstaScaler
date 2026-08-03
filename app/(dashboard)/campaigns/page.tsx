@@ -512,9 +512,9 @@ export default function CampaignsPage() {
                 <p className="text-sm text-muted truncate">&ldquo;{auto.dmMessage}&rdquo;</p>
 
                 {/* Tracked link sent */}
-                {auto.trackedLinks[0]?.trackedUrl && (
+                {auto.trackedLinks[0]?.destinationUrl && (
                   <p className="mt-2 truncate font-mono text-xs text-zinc-500">
-                    {auto.trackedLinks[0].trackedUrl}
+                    {auto.trackedLinks[0].destinationUrl}
                   </p>
                 )}
                 {auto.reportShareEnabled && auto.reportUrl && (

@@ -8,7 +8,7 @@
   "r2_buckets": [{ "binding": "EVENT_JOURNAL", "bucket_name": "instascaler-event-journal" }],
   "queues": {
     "producers": [{ "binding": "INSTAGRAM_EVENTS", "queue": "instascaler-events" }],
-    "consumers": [{ "queue": "instascaler-events", "max_batch_size": 10, "max_batch_timeout": 5, "max_retries": 5, "dead_letter_queue": "instascaler-events-dlq" }]
+    "consumers": [{ "queue": "instascaler-events", "max_batch_size": 1, "max_batch_timeout": 1, "max_retries": 5, "dead_letter_queue": "instascaler-events-dlq" }]
   }
   ,"workflows": [
     { "binding": "RECONCILE_WORKFLOW", "name": "instascaler-reconcile", "class_name": "ReconcileAccountWorkflow" },
