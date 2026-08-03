@@ -1,0 +1,2 @@
+-- Historical migration placeholder.
+-- The complete current schema is applied by 20260802000000_initial.
