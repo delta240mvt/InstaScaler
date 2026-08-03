@@ -15,6 +15,7 @@ import { deliveryError } from "@/lib/delivery/errors";
 import { PermissionError, TokenExpiredError } from "@/lib/meta/client";
 import type { JobResult } from "@/lib/delivery";
 import { reserveQueueJob, validateDelaySeconds, type BudgetDb } from "@/lib/jobs/budget";
+import { initialCommentDmPlan } from "@/lib/delivery/comment-opening-flow";
 
 type Automation = {
   id: string; instagramAccountId: string; name: string; postId: string | null; matchAnyPost: boolean;
@@ -96,17 +97,21 @@ async function deliverComment(db: DeliveryDb, env: JobsEnv, envelope: EventEnvel
   if (!automation) return { status: "skipped", code: "NO_CAMPAIGN_MATCH" };
   if (!await reserve(env, account.instagramId, automation.publicReplyEnabled ? 2 : 1)) return { status: "retry", code: "ACCOUNT_RATE_LIMIT" };
   const token = await decryptToken(account.accessToken, env.ENCRYPTION_KEY);
-  const prompt = automation.requireFollowBeforeFreebie;
-  const opening = prompt || automation.openingDmEnabled;
+  const plan = initialCommentDmPlan({ openingDmEnabled: automation.openingDmEnabled, requireFollowBeforeFreebie: automation.requireFollowBeforeFreebie });
   const link = trackedUrl(env, automation);
   const externalId = `comment:${automation.id}:${commentId}`;
   if (!await reserveDelivery(db, { externalId, automationId: automation.id, instagramAccountId: account.id, commenterId: userId })) return { status: "skipped", code: "DUPLICATE_DELIVERY" };
   try {
-    if (opening) {
+    if (plan.mode === "opening") {
       await sendPrivateReplyWithButton(token, account.instagramId, commentId,
-        render(prompt ? automation.followPromptMessage || "Follow this account, then confirm below." : automation.openingDmMessage || "Tap below to continue.", text(envelope, "fromUsername")),
-        prompt ? automation.followPromptButtonLabel || "I'm following" : automation.openingDmButtonLabel || "Continue",
-        `${prompt ? "followcheck" : "reveal"}:${automation.id}`);
+        render(automation.openingDmMessage || "Tap below to continue.", text(envelope, "fromUsername")),
+        automation.openingDmButtonLabel || "Continue",
+        `reveal:${automation.id}`);
+    } else if (plan.mode === "followPrompt") {
+      await sendPrivateReplyWithButton(token, account.instagramId, commentId,
+        render(automation.followPromptMessage || "Follow this account, then confirm below.", text(envelope, "fromUsername")),
+        automation.followPromptButtonLabel || "I'm following",
+        `followcheck:${automation.id}`);
     } else await sendPrivateReply(token, account.instagramId, commentId, render(automation.dmMessage, text(envelope, "fromUsername"), link));
     await record(db, automation, account, externalId, userId, "SENT");
   } catch (error) {
@@ -125,7 +130,7 @@ async function deliverComment(db: DeliveryDb, env: JobsEnv, envelope: EventEnvel
       }
     }
   }
-  return { status: "sent", code: opening ? "OPENING_SENT" : "FREEBIE_SENT" };
+  return { status: "sent", code: plan.mode === "opening" ? "OPENING_SENT" : "FREEBIE_SENT" };
 }
 
 async function deliverPostback(db: DeliveryDb, env: JobsEnv, envelope: EventEnvelope): Promise<JobResult> {
