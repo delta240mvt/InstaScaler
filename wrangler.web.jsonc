@@ -2,6 +2,10 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "instascaler-web",
   "main": ".open-next/worker.js",
+  "assets": { "directory": ".open-next/assets" },
+  "services": [
+    { "binding": "CORE_API", "service": "instascaler-core" }
+  ],
   "compatibility_date": "2026-08-02",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true }

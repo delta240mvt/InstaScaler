@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { createPasswordVerifier } from "@/lib/admin-auth/password";
 import { LoginThrottle } from "@/workers/core/login-throttle";
 import { createCoreApp } from "@/workers/core";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 function throttleState() {
   const values = new Map<string, unknown>();
@@ -14,6 +16,12 @@ function throttleState() {
 }
 
 describe("Core admin authentication", () => {
+  it("uses a Cloudflare Durable Object class for production login throttling", () => {
+    const source = readFileSync(resolve("workers/core/login-throttle.ts"), "utf8");
+    expect(source).toContain('import { DurableObject } from "cloudflare:workers"');
+    expect(source).toContain("class LoginThrottle extends DurableObject");
+  });
+
   it("allows five failures, rejects the sixth, and clears failures after success", async () => {
     const state = throttleState();
     const throttle = new LoginThrottle(state as never, {} as never);

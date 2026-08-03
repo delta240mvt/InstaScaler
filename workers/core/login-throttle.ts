@@ -5,8 +5,10 @@ type DurableStorage = {
 
 type DurableState = { storage: DurableStorage };
 
-export class LoginThrottle {
-  constructor(private readonly state: DurableState, env: unknown) { void env; }
+export class LoginThrottle extends DurableObject<unknown> {
+  constructor(private readonly state: DurableState, env: unknown) {
+    super(state as never, env);
+  }
 
   async checkAndRecord(success: boolean): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
     const now = Date.now();
@@ -25,3 +27,4 @@ export class LoginThrottle {
     return { allowed: true, retryAfterSeconds: 0 };
   }
 }
+import { DurableObject } from "cloudflare:workers";
