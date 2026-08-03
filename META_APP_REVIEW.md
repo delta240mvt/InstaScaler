@@ -1,8 +1,8 @@
 # Meta App Review notes
 
-You only need App Review if you want people who are not testers on your app to connect their own Instagram accounts. If you run OpenReply for your own accounts, skip this. See the "Letting other people use your instance" section of [docs/setup.md](docs/setup.md).
+You only need App Review if you want people who are not testers on your app to connect their own Instagram accounts. If you run InstaScaler for your own accounts, skip this. See the setup guide in [docs/setup.md](docs/setup.md).
 
-OpenReply uses the official Instagram API to send a private reply to someone who comments on a connected professional account's post or reel.
+InstaScaler uses the official Instagram API to send a private reply to someone who comments on a connected professional account's post or reel.
 
 ## Permissions to request
 
@@ -24,7 +24,7 @@ Paste these into the App Review request, adjusted to your wording.
 
 Record on your published app, real accounts, one take, about two to three minutes. Narrate each step.
 
-1. Sign in with an email magic link.
+1. Sign in with the configured administrator login and password.
 2. Go to Settings and click Connect Instagram. Show the consent screen with the permissions being granted.
 3. Create a campaign on a recent post with keyword `LINK`, a DM message, and save.
 4. On a second phone or account, comment `LINK` on that post.
@@ -43,4 +43,4 @@ Reviewers want to see the permission produce a real result for a real user. This
 
 ## Business verification
 
-Meta usually requires business verification before granting Advanced Access. It asks for a document proving a legal entity: a business registration or license, articles of incorporation, a business tax document, or a business bank statement. If you do not have a registered business, you cannot complete this step, and the practical path is to run OpenReply for your own accounts instead, which never needs review.
+Meta usually requires business verification before granting Advanced Access. It asks for a document proving a legal entity: a business registration or license, articles of incorporation, a business tax document, or a business bank statement. If you do not have a registered business, you cannot complete this step, and the practical path is to run InstaScaler for your own accounts instead, which never needs review.

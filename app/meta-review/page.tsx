@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 import LegalShell from "@/components/legal-shell";
 
 export const metadata: Metadata = {
-  title: "Meta App Review Support - OpenReply",
+  title: "Meta App Review Support - InstaScaler",
   description:
-    "Meta App Review notes for OpenReply's official Instagram private reply workflow.",
+    "Meta App Review notes for InstaScaler's official Instagram private reply workflow.",
 };
 
 export default function MetaReviewPage() {
   return (
     <LegalShell
       title="Meta App Review Support"
-      description="OpenReply is designed for Instagram professional accounts that want to send private replies after keyword comments on their own posts or reels."
+      description="InstaScaler is designed for Instagram professional accounts that want to send private replies after keyword comments on their own posts or reels."
       updatedAt="May 24, 2026"
     >
       <section>
@@ -19,7 +19,7 @@ export default function MetaReviewPage() {
         <p className="mt-3">
           A business owner signs in by email, connects an Instagram professional
           account through Meta OAuth, creates a keyword campaign for a post or
-          reel, and receives a webhook when someone comments. OpenReply queues
+          reel, and receives a webhook when someone comments. InstaScaler queues
           the event, deduplicates it, checks rate limits, then sends a private
           reply using the comment ID.
         </p>
@@ -28,7 +28,7 @@ export default function MetaReviewPage() {
       <section>
         <h2 className="text-xl font-bold text-foreground">Compliance Position</h2>
         <p className="mt-3">
-          The app uses official Meta APIs, verifies webhook signatures, encrypts
+          InstaScaler uses official Meta APIs, verifies webhook signatures, encrypts
           tokens, avoids scraping, avoids password collection, and sends no more
           than one private reply for a matched campaign/comment pair.
         </p>

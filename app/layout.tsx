@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "OpenReply",
-  description: "Private Instagram automation dashboard.",
+  title: "InstaScaler",
+  description: "Private Instagram growth and automation workspace.",
 };
 
 export default function RootLayout({

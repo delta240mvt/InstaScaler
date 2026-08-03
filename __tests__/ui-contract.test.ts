@@ -59,7 +59,9 @@ describe("responsive shell and login", () => {
   it("gives login a premium private-workspace treatment and password visibility", () => {
     const page = source("app/login/page.tsx");
     const form = source("components/admin-login-form.tsx");
-    expect(page).toContain("Your private creator workspace");
+    expect(page).toContain("Your growth workspace");
+    expect(page).toContain("InstaScaler");
+    expect(page).toContain("editorial-canvas");
     expect(page).toContain("lg:grid-cols-2");
     expect(form).toContain('aria-label={showPassword ? "Hide password" : "Show password"}');
     expect(form).toContain('name="eye"');
@@ -82,7 +84,7 @@ describe("analytics hierarchy", () => {
 
   it("brands public reports without private navigation", () => {
     const report = source("app/reports/[shareSlug]/page.tsx");
-    expect(report).toContain("OpenReply");
+    expect(report).toContain("InstaScaler");
     expect(report).toContain("Public campaign report");
     expect(report).toContain("app-page-title");
   });
@@ -143,7 +145,7 @@ describe("operational and public surfaces", () => {
 
   it("uses consistent light branding for legal and review surfaces", () => {
     const legal = source("components/legal-shell.tsx");
-    expect(legal).toContain("OpenReply");
+    expect(legal).toContain("InstaScaler");
     expect(legal).toContain("app-page-title");
     expect(legal).not.toContain("text-zinc-300");
   });

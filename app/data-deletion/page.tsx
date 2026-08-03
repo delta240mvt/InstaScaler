@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 import LegalShell from "@/components/legal-shell";
 
 export const metadata: Metadata = {
-  title: "Data Deletion - OpenReply",
+  title: "Data Deletion - InstaScaler",
   description:
-    "How OpenReply customers can disconnect Instagram and request account or campaign data deletion.",
+    "How InstaScaler customers can disconnect Instagram and request account or campaign data deletion.",
 };
 
 export default function DataDeletionPage() {
   return (
     <LegalShell
       title="Data Deletion"
-      description="Use this page for Meta App Review and customer requests about removing OpenReply account, workspace, Instagram, and campaign data."
+      description="Use this page for Meta App Review and customer requests about removing InstaScaler account, Instagram, and campaign data."
       updatedAt="May 24, 2026"
     >
       <section>

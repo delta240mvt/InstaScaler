@@ -1,6 +1,6 @@
-# OpenReply
+# InstaScaler
 
-Private Instagram comment-to-DM automation for one administrator and up to five professional accounts. It runs natively on Cloudflare and uses Neon Serverless Postgres—no Redis, always-on process, Hyperdrive, Auth.js, or email login.
+Private Instagram growth and comment-to-DM automation for one administrator and up to five professional accounts. It runs natively on Cloudflare and uses Neon Serverless Postgres—no Redis, always-on process, Hyperdrive, Auth.js, or email login.
 
 ## Architecture
 
