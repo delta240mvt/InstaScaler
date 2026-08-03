@@ -17,3 +17,7 @@ export function parsePostbackPayload(payload: string): {
 export function deliveryExternalId(automationId: string, deliveryKey: string | undefined, userId: string): string {
   return `freebie:${automationId}:${deliveryKey || userId}`;
 }
+
+export function followUpExternalId(automationId: string, deliveryKey: string | undefined, userId: string): string {
+  return `followup:${automationId}:${deliveryKey || userId}`;
+}

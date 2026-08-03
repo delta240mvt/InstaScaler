@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   deliveryExternalId,
+  followUpExternalId,
   parsePostbackPayload,
   postbackPayload,
 } from "@/lib/delivery/postback-context";
@@ -20,6 +21,12 @@ describe("postback delivery context", () => {
   it("allows the same user to receive a new freebie for a new comment", () => {
     expect(deliveryExternalId("campaign_1", "comment_123", "user_1")).not.toBe(
       deliveryExternalId("campaign_1", "comment_456", "user_1"),
+    );
+  });
+
+  it("allows the same user to receive a new follow-up for a new comment", () => {
+    expect(followUpExternalId("campaign_1", "comment_123", "user_1")).not.toBe(
+      followUpExternalId("campaign_1", "comment_456", "user_1"),
     );
   });
 });

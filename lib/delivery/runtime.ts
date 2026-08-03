@@ -17,7 +17,7 @@ import type { JobResult } from "@/lib/delivery";
 import { reserveQueueJob, validateDelaySeconds, type BudgetDb } from "@/lib/jobs/budget";
 import { initialCommentDmPlan } from "@/lib/delivery/comment-opening-flow";
 import { directDeliveryLink } from "@/lib/delivery/link-destination";
-import { deliveryExternalId, parsePostbackPayload, postbackPayload } from "@/lib/delivery/postback-context";
+import { deliveryExternalId, followUpExternalId, parsePostbackPayload, postbackPayload } from "@/lib/delivery/postback-context";
 import { selectPublicReply } from "@/lib/delivery/public-reply-choice";
 
 type Automation = {
@@ -167,7 +167,7 @@ async function deliverPostback(db: DeliveryDb, env: JobsEnv, envelope: EventEnve
   if (automation.followUpEnabled && automation.followUpMessage?.trim()) {
     const delaySeconds = validateDelaySeconds(automation.followUpDelayMinutes * 60);
     if ((await reserveQueueJob(db, account.id, 1)).allowed) {
-      await env.INSTAGRAM_EVENTS.send({ version: 1, kind: "FOLLOW_UP", externalId: `followup:${automation.id}:${userId}`, instagramAccountId: account.instagramId, automationId: automation.id, userId, dueAt: new Date(Date.now() + delaySeconds * 1000).toISOString() }, { delaySeconds });
+      await env.INSTAGRAM_EVENTS.send({ version: 1, kind: "FOLLOW_UP", externalId: followUpExternalId(automation.id, deliveryKey, userId), instagramAccountId: account.instagramId, automationId: automation.id, userId, dueAt: new Date(Date.now() + delaySeconds * 1000).toISOString() }, { delaySeconds });
     }
   }
   return { status: "sent", code: "FREEBIE_SENT" };
