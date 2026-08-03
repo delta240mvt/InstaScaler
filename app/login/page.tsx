@@ -12,7 +12,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <div aria-hidden="true" className="absolute -right-24 top-1/3 h-80 w-80 rounded-full border border-accent/15 bg-accent/5" />
       <div className="relative flex items-center gap-3">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-white"><Icon name="sparkles" size={20} /></span>
-        <span className="font-serif text-xl font-medium tracking-[-0.04em]">minbestedag@!</span>
+        <span className="font-serif text-xl font-medium tracking-[-0.04em]">InstaScaler</span>
       </div>
       <div className="relative max-w-xl pb-10">
         <p className="app-kicker mb-5">Creative growth studio</p>
@@ -28,7 +28,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <div className="w-full max-w-[440px]">
         <div className="mb-8 flex items-center gap-3 lg:hidden">
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-white shadow-lg shadow-accent/20"><Icon name="sparkles" size={19} /></span>
-          <span className="font-serif text-xl font-medium tracking-[-0.04em]">minbestedag@!</span>
+          <span className="font-serif text-xl font-medium tracking-[-0.04em]">InstaScaler</span>
         </div>
         <div className="app-card p-5 shadow-[var(--app-shadow-lg)] sm:p-8 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
           <p className="app-kicker">Welcome back</p>

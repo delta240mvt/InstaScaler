@@ -19,7 +19,7 @@ export default function LegalShell({
       <header className="border-b border-border bg-surface/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5">
           <Link href="/" className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-accent text-white"><Icon name="campaigns" size={18} /></span><span className="font-serif text-xl font-medium tracking-[-0.04em]">minbestedag@!</span>
+            <span className="flex size-9 items-center justify-center rounded-xl bg-accent text-white"><Icon name="campaigns" size={18} /></span><span className="font-serif text-xl font-medium tracking-[-0.04em]">InstaScaler</span>
           </Link>
           <Link
             href="/login"

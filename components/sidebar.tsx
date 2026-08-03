@@ -51,7 +51,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <Icon name="sparkles" size={18} />
           </span>
           <span>
-            <span className="block font-serif text-lg font-medium tracking-[-0.04em] text-foreground">minbestedag@!</span>
+            <span className="block font-serif text-lg font-medium tracking-[-0.04em] text-foreground">InstaScaler</span>
             <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Growth studio</span>
           </span>
         </Link>
