@@ -46,7 +46,7 @@ describe("single-admin authentication primitives", () => {
   it("serializes a fixed host-only secure cookie", () => {
     expect(SESSION_COOKIE).toBe("__Host-instascaler-session");
     expect(serializeSessionCookie("token")).toBe(
-      "__Host-instascaler-session=token; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800",
+      "__Host-instascaler-session=token; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800",
     );
   });
 });
