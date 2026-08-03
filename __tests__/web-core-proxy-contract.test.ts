@@ -13,5 +13,6 @@ describe("Web-to-Core API proxy contract", () => {
     expect(proxyRoute).toContain("getCloudflareContext");
     expect(proxyRoute).toContain("core.fetch");
     expect(proxyRoute).toContain('headers.set("origin", "https://core.internal")');
+    expect(proxyRoute).toContain('redirect: "manual"');
   });
 });

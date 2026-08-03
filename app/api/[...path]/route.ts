@@ -24,6 +24,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
     new Request(target, {
       method: request.method,
       headers,
+      redirect: "manual",
       body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
     }),
   );
