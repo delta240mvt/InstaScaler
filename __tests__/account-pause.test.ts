@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { handleDeliveryFailure } from "@/lib/delivery/runtime";
-import { RateLimitError, TokenExpiredError } from "@/lib/meta/client";
+import { PermissionError, RateLimitError, TokenExpiredError } from "@/lib/meta/client";
 
 describe("account-local delivery failures", () => {
   it("pauses only the account whose Meta token expired", async () => {
@@ -16,6 +16,17 @@ describe("account-local delivery failures", () => {
     const update = vi.fn();
     const db = { instagramAccount: { update }, operationalEvent: { create: vi.fn() } };
     await expect(handleDeliveryFailure(db, "ig_123", new RateLimitError("slow down"))).resolves.toEqual({ status: "retry", code: "META_RATE_LIMIT" });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("does not pause the whole account when one recipient cannot be reached", async () => {
+    const update = vi.fn();
+    const db = { instagramAccount: { update }, operationalEvent: { create: vi.fn() } };
+
+    await expect(
+      handleDeliveryFailure(db, "ig_123", new PermissionError("The requested user cannot be found.")),
+    ).resolves.toEqual({ status: "failed", code: "META_PERMANENT" });
+
     expect(update).not.toHaveBeenCalled();
   });
 });

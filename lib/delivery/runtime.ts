@@ -12,7 +12,7 @@ import {
   sendPrivateReplyWithButton,
 } from "@/lib/meta/client";
 import { deliveryError } from "@/lib/delivery/errors";
-import { PermissionError, TokenExpiredError } from "@/lib/meta/client";
+import { TokenExpiredError } from "@/lib/meta/client";
 import type { JobResult } from "@/lib/delivery";
 import { reserveQueueJob, validateDelaySeconds, type BudgetDb } from "@/lib/jobs/budget";
 import { initialCommentDmPlan } from "@/lib/delivery/comment-opening-flow";
@@ -40,8 +40,8 @@ type DeliveryReservationDb = { dmLog: Pick<DeliveryDb["dmLog"], "findUnique" | "
 type FailureDb = { instagramAccount: Pick<DeliveryDb["instagramAccount"], "update">; operationalEvent: DeliveryDb["operationalEvent"] };
 
 export async function handleDeliveryFailure(db: FailureDb, instagramId: string, error: unknown): Promise<JobResult> {
-  if (error instanceof TokenExpiredError || error instanceof PermissionError) {
-    const lastErrorCode = error instanceof TokenExpiredError ? "META_TOKEN_EXPIRED" : "META_PERMISSION";
+  if (error instanceof TokenExpiredError) {
+    const lastErrorCode = "META_TOKEN_EXPIRED";
     await db.instagramAccount.update({ where: { instagramId }, data: { webhookSubscribed: false, requiresReconnect: true, lastErrorCode } });
     await db.operationalEvent.create({ data: { source: "JOBS", level: "ERROR", message: "Instagram account requires reconnection", payload: { instagramId, code: lastErrorCode } } });
   }
