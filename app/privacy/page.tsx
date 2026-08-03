@@ -12,8 +12,19 @@ export default function PrivacyPage() {
     <LegalShell
       title="Privacy Policy"
       description="InstaScaler helps businesses send Meta-compliant private replies when people comment on connected Instagram posts or reels."
-      updatedAt="May 24, 2026"
+      updatedAt="August 3, 2026"
     >
+      <section>
+        <h2 className="text-xl font-bold text-white">Data Controller</h2>
+        <p className="mt-3">
+          The data controller for InstaScaler is Przemysław Filipiak. For
+          privacy questions, data access requests, or deletion requests, email
+          <a className="ml-1 text-accent underline underline-offset-4" href="mailto:delta240mvt@gmail.com">
+            delta240mvt@gmail.com
+          </a>.
+        </p>
+      </section>
+
       <section>
         <h2 className="text-xl font-bold text-white">Data We Collect</h2>
         <p className="mt-3">
@@ -67,8 +78,10 @@ export default function PrivacyPage() {
       <section>
         <h2 className="text-xl font-bold text-white">Contact</h2>
         <p className="mt-3">
-          For privacy questions, contact the repository owner through GitHub or
-          the support email configured for the hosted InstaScaler service.
+          Contact Przemysław Filipiak at
+          <a className="ml-1 text-accent underline underline-offset-4" href="mailto:delta240mvt@gmail.com">
+            delta240mvt@gmail.com
+          </a>.
         </p>
       </section>
     </LegalShell>
