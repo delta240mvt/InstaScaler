@@ -1,4 +1,5 @@
 export type DeliveryLink = {
+  slug?: string;
   destinationUrl?: string | null;
 };
 

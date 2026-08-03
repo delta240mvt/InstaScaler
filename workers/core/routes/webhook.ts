@@ -52,15 +52,20 @@ export function webhookRoutes(getDb?: (env: CoreEnv) => WebhookDb) {
     const body = await context.req.text();
     if (!await verifyMetaSignature(body, context.req.header("x-hub-signature-256"), context.env.META_APP_SECRET)) return context.json({ error: "invalid_signature" }, 401);
     const envelopes = normalizeEvents(JSON.parse(body) as Record<string, unknown>);
-    for (const envelope of envelopes) {
-      const journal = await journalEvent(context.env.EVENT_JOURNAL, envelope);
-      if (getDb) {
-        const db = getDb(context.env);
-        const account = await db.instagramAccount.findUnique({ where: { instagramId: envelope.instagramAccountId }, select: { id: true } });
-        if (!account || !await reserveInboundEvent(db, account.id)) continue;
+    const process = (async () => {
+      for (const envelope of envelopes) {
+        const journal = await journalEvent(context.env.EVENT_JOURNAL, envelope);
+        if (getDb) {
+          const db = getDb(context.env);
+          const account = await db.instagramAccount.findUnique({ where: { instagramId: envelope.instagramAccountId }, select: { id: true } });
+          if (!account || !await reserveInboundEvent(db, account.id)) continue;
+        }
+        await context.env.INSTAGRAM_EVENTS.send({ version: 1, kind: envelope.kind, externalId: journal.externalId, instagramAccountId: envelope.instagramAccountId, r2Key: journal.key });
       }
-      await context.env.INSTAGRAM_EVENTS.send({ version: 1, kind: envelope.kind, externalId: journal.externalId, instagramAccountId: envelope.instagramAccountId, r2Key: journal.key });
-    }
+    })().catch((error) => {
+      console.error("Webhook processing failed", error instanceof Error ? error.message : error);
+    });
+    context.executionCtx.waitUntil(process);
     return context.json({ accepted: envelopes.length });
   });
   return app;
