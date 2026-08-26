@@ -218,6 +218,10 @@ prisma/                  schemat i migracje
 docs/                    runbooki
 ```
 
+## Praca z agentem AI
+
+Repozytorium zawiera szczegółowe zasady implementacji dla Codexa i Claude Code w [`AGENTS.md`](AGENTS.md). Opisują one granice Workerów, bezpieczną ścieżkę webhook→R2→Queue→Jobs, wymagane testy, migracje Prisma, sekrety oraz sposób weryfikacji zmian. `CLAUDE.md` automatycznie importuje te same reguły, więc oba narzędzia korzystają z jednego źródła prawdy.
+
 ## Przydatne polecenia
 
 | Zadanie | Polecenie |
