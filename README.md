@@ -43,42 +43,93 @@ InstaScaler obsługuje najważniejszy przepływ automatyzacji: komentarz zaczyna
 
 ## Kształt środowiska uruchomieniowego
 
+### Jak to działa — bez technicznego żargonu
+
+Wyobraź sobie, że ktoś wpisuje `LINK` pod Twoim postem. Instagram informuje o tym InstaScaler. Aplikacja sprawdza, czy komentarz pasuje do aktywnej kampanii, pilnuje, aby tej samej osobie nie wysłać dwa razy tego samego materiału, i wysyła prywatną wiadomość. Jeżeli kampania wymaga obserwowania konta, odbiorca najpierw dostaje prośbę o obserwowanie i przycisk potwierdzenia. Dopiero potem otrzymuje właściwy link. Każdy etap zapisuje wynik, więc w panelu wiadomo, co zostało wysłane, pominięte, ponowione albo zakończone błędem.
+
+Najważniejsze elementy mają osobne role:
+
+- **Web** wyświetla panel i przekazuje żądania API do Core.
+- **Core** przyjmuje webhooki Meta, sprawdza ich autentyczność i zapisuje zdarzenia.
+- **R2** jest dziennikiem bezpieczeństwa — przechowuje pełne zdarzenie do czasu jego obsłużenia.
+- **Queue** przekazuje małe zadanie do Jobs i odpowiada za ponowienia.
+- **Jobs** wykonuje właściwą pracę: dopasowuje kampanię i komunikuje się z Instagramem.
+- **Neon** pamięta konta, kampanie, wyniki i identyfikatory już obsłużonych zdarzeń.
+- **Durable Objects** pilnują limitów wysyłki i uruchamiają harmonogram prac okresowych.
+
+### Aktualny graf architektury
+
 ```text
-                         ┌──────────────────────┐
-                         │  instascaler-web     │
-                         │  Next.js + OpenNext  │
-                         └──────────┬───────────┘
-                                    │ service binding / routes
-                         ┌──────────▼───────────┐
-                         │  instascaler-core    │
-                         │  Hono API + Meta     │
-                         └──────┬────────┬──────┘
-                                │        │
-                         signed │        │ serverless SQL
-                         events  │        ▼
-                                ▼   ┌───────────────┐
-                         ┌────────┐│ Neon Postgres │
-                         │ R2     │└───────────────┘
-                         │journal │
-                         └───┬────┘
-                             │ compact Queue message
-                             ▼
-                    ┌─────────────────────────┐
-                    │  instascaler-jobs       │
-                    │  Queue + Workflows      │
-                    │  Durable Object limits  │
-                    └────────────┬────────────┘
-                                 │ official Graph API side effects
-                                 ▼
-                            Instagram
+ Użytkownik panelu
+        │ HTTPS
+        ▼
+┌──────────────────────┐   service binding   ┌────────────────────────┐
+│  instascaler-web     │ ──────────────────► │  instascaler-core       │
+│  Next.js + OpenNext  │      /api/*          │  Hono API + webhook     │
+└──────────────────────┘                      └───────┬─────────┬───────┘
+                                                     │         │
+ Instagram / Meta ── podpisany POST /webhook ───────┘         │ SQL
+                                                     │         ▼
+                                          weryfikacja podpisu  ┌────────────────┐
+                                          i normalizacja       │ Neon Postgres  │
+                                                     │         │ stan + dedupe  │
+                                ┌────────────────────┴─────┐   └───────▲────────┘
+                                │                          │           │ SQL
+                                ▼                          ▼           │
+                       ┌────────────────┐        ┌────────────────┐     │
+                       │ R2 journal     │        │ Cloudflare     │     │
+                       │ pełne zdarzenie│        │ Queue          │     │
+                       └───────▲────────┘        │ klucz R2 + ID  │     │
+                               │                 └───────┬────────┘     │
+                               │ odczyt pełnych danych   │ trigger     │
+                               └─────────────────────────┤             │
+                                                         ▼             │
+                                                ┌──────────────────────┴─┐
+                                                │  instascaler-jobs      │
+                                                │  dopasowanie kampanii  │
+                                                │  dostawa + retry       │
+                                                └───────────┬────────────┘
+                                                            │
+                                                ┌───────────▼────────────┐
+                                                │ AccountRateLimiter DO  │
+                                                │ limit wysyłek / konto  │
+                                                └───────────┬────────────┘
+                                                            │ Graph API
+                                                            ▼
+                                                       Instagram
+
+ Osobna ścieżka okresowa:
+
+ /internal/bootstrap → WorkflowScheduler DO → alarm co godzinę
+                                      │
+                                      ▼
+          reconcile · recover R2 · refresh tokens · next Reel
+               snapshots · retention → Cloudflare Workflows
 ```
 
 ### Ścieżka zdarzenia
 
-1. Meta wysyła podpisany webhook do Core.
-2. Core weryfikuje go, zapisuje kopertę w R2 i publikuje wiadomość Queue.
-3. Jobs rezerwuje idempotentną dostawę w Neon; Durable Object chroni konto przed skokami wysyłek.
-4. Jobs wysyła DM, komentarz lub follow-up przez Graph API, a Neon zapisuje stan końcowy.
+1. **Zdarzenie powstaje w Instagramie.** Może to być komentarz, wiadomość tekstowa albo kliknięcie przycisku w DM (`postback`). Meta wysyła je jako `POST /webhook` do Core.
+2. **Core sprawdza nadawcę.** Podpis `X-Hub-Signature-256` jest porównywany z HMAC wyliczonym przy użyciu `META_APP_SECRET`. Niepoprawnie podpisane żądanie kończy się kodem `401` i nie trafia dalej.
+3. **Payload jest normalizowany.** Core odrzuca zdarzenia własnego konta i nieobsługiwane wiadomości, a pozostałym nadaje stabilny `externalId`, np. `comment:<id>` lub `message:<mid>`.
+4. **Pełne zdarzenie trafia do R2.** Koperta JSON zawiera rodzaj zdarzenia, konto, czas i potrzebne dane. Klucz obiektu jest deterministyczny i powstaje z daty oraz skrótu `externalId`.
+5. **Core sprawdza konto i dzienny budżet.** Dla znanego, połączonego konta rezerwuje zdarzenie przychodzące w Neon.
+6. **Do Queue trafia tylko mała wiadomość.** Zawiera `externalId`, rodzaj zadania, identyfikator konta i `r2Key`. Pełny webhook ani token Meta nie podróżują w Queue.
+7. **Meta szybko dostaje potwierdzenie.** Core odpowiada liczbą zaakceptowanych zdarzeń, a zapis i kolejkowanie kończy w `waitUntil`, poza czasem odpowiedzi HTTP.
+8. **Queue uruchamia Jobs.** Jobs sprawdza format wiadomości, wyszukuje konto w Neon i rezerwuje `ProcessedEvent`. Jeżeli `externalId` ma już stan końcowy, zdarzenie jest pomijane jako duplikat.
+9. **Jobs pobiera pełną kopertę z R2.** Następnie wybiera obsługę `COMMENT`, `POSTBACK` albo `MESSAGE` i szuka aktywnej kampanii pasującej do posta oraz słów kluczowych.
+10. **Przed każdą wysyłką działa limit konta.** `AccountRateLimiter` jako Durable Object serializuje rezerwacje dla danego konta. Brak dostępnego limitu powoduje retry zamiast utraty zdarzenia.
+11. **Jobs wykonuje akcję przez oficjalny Graph API.** Zależnie od kampanii może wysłać początkowy DM, prośbę o obserwowanie, materiał z linkiem, publiczną odpowiedź albo opóźniony follow-up. Follow-up wraca do tej samej Queue jako zadanie z opóźnieniem.
+12. **Neon zapisuje wynik.** Zdarzenie kończy jako `COMPLETED`, `SKIPPED`, `RETRYING` albo `FAILED`; osobny log dostawy przechowuje wynik widoczny w panelu.
+13. **R2 jest sprzątane dopiero po bezpiecznym zakończeniu.** Dla wyniku wysłanego albo świadomie pominiętego Jobs usuwa kopertę z R2. Przy retry lub błędzie pozostaje ona do kolejnej próby albo odzyskania.
+14. **Błędy przejściowe są ponawiane.** Queue stosuje backoff i maksymalnie pięć prób. Po ich wyczerpaniu wiadomość trafia do `instascaler-events-dlq`; godzinowy `RecoverJournalWorkflow` dodatkowo skanuje pozostawione koperty R2.
+
+```text
+NOWE → R2 → QUEUE → PROCESSING ─┬─► COMPLETED ─► usuń z R2
+                               ├─► SKIPPED   ─► usuń z R2
+                               ├─► RETRYING  ─► Queue retry / recovery R2
+                               └─► FAILED    ─► zachowaj ślad do diagnostyki
+```
 
 ## Limity działania na planie Free
 
