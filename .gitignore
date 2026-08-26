@@ -48,3 +48,6 @@ next-env.d.ts
 /app/generated/prisma
 /app/generated/cf-native
 .gstack/
+
+# Added by ggshield
+.cache_ggshield
