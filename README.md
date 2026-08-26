@@ -2,6 +2,23 @@
 
 <div align="center">
 
+<pre>
+ ██╗███╗   ██╗███████╗████████╗ █████╗
+ ██║████╗  ██║██╔════╝╚══██╔══╝██╔══██╗
+ ██║██╔██╗ ██║███████╗   ██║   ███████║
+ ██║██║╚██╗██║╚════██║   ██║   ██╔══██║
+ ██║██║ ╚████║███████║   ██║   ██║  ██║
+ ╚═╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝
+
+ ███████╗ ██████╗ █████╗ ██╗     ███████╗██████╗
+ ██╔════╝██╔════╝██╔══██╗██║     ██╔════╝██╔══██╗
+ ███████╗██║     ███████║██║     █████╗  ██████╔╝
+ ╚════██║██║     ██╔══██║██║     ██╔══╝  ██╔══██╗
+ ███████║╚██████╗██║  ██║███████╗███████╗██║  ██║
+ ╚══════╝ ╚═════╝╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝
+                         I N S T A G R A M   A U T O M A T I O N
+</pre>
+
 **Prywatna, natywna dla Cloudflare konsola automatyzacji Instagrama, która zamienia komentarze w rozmowy.**
 
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange?style=flat-square&logo=cloudflare)](https://workers.cloudflare.com/) [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/) [![Neon](https://img.shields.io/badge/Database-Neon%20Serverless-00e599?style=flat-square)](https://neon.tech/) [![Meta Graph API](https://img.shields.io/badge/Instagram-Meta%20Graph%20API-E1306C?style=flat-square&logo=instagram)](https://developers.facebook.com/docs/instagram-api/) [![GitGuardian](https://img.shields.io/badge/security-GitGuardian-00C853?style=flat-square&logo=gitguardian)](https://www.gitguardian.com/) [![License](https://img.shields.io/badge/License-MIT-4a8d83.svg?style=flat-square)](LICENSE)
@@ -27,10 +44,33 @@ InstaScaler obsługuje najważniejszy przepływ automatyzacji: komentarz zaczyna
 ## Kształt środowiska uruchomieniowego
 
 ```text
-Meta webhook → instascaler-core → R2 + Queue → instascaler-jobs → Instagram
-                         │                       │
-                         └──── Neon Postgres ────┘
-instascaler-web (Next.js + OpenNext) używa service bindingu do Core.
+                         ┌──────────────────────┐
+                         │  instascaler-web     │
+                         │  Next.js + OpenNext  │
+                         └──────────┬───────────┘
+                                    │ service binding / routes
+                         ┌──────────▼───────────┐
+                         │  instascaler-core    │
+                         │  Hono API + Meta     │
+                         └──────┬────────┬──────┘
+                                │        │
+                         signed │        │ serverless SQL
+                         events  │        ▼
+                                ▼   ┌───────────────┐
+                         ┌────────┐│ Neon Postgres │
+                         │ R2     │└───────────────┘
+                         │journal │
+                         └───┬────┘
+                             │ compact Queue message
+                             ▼
+                    ┌─────────────────────────┐
+                    │  instascaler-jobs       │
+                    │  Queue + Workflows      │
+                    │  Durable Object limits  │
+                    └────────────┬────────────┘
+                                 │ official Graph API side effects
+                                 ▼
+                            Instagram
 ```
 
 ### Ścieżka zdarzenia
