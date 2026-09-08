@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-export const PROTECTED_PREFIXES = ["/dashboard", "/overview", "/campaigns", "/automations", "/inbox", "/logs", "/diagnostics", "/settings"];
+export const PROTECTED_PREFIXES = ["/dashboard", "/overview", "/campaigns", "/automations", "/inbox", "/logs", "/diagnostics", "/settings", "/paths"];
 
 export function hasSessionCookie(request: NextRequest): boolean {
   return request.cookies.has("__Host-instascaler-session");
@@ -20,4 +20,4 @@ export function protectWebRoute(request: NextRequest) {
   return NextResponse.next();
 }
 
-export const webRouteMatcher = ["/dashboard/:path*", "/overview/:path*", "/campaigns/:path*", "/automations/:path*", "/inbox/:path*", "/logs/:path*", "/diagnostics/:path*", "/settings/:path*", "/login"];
+export const webRouteMatcher = ["/dashboard/:path*", "/overview/:path*", "/campaigns/:path*", "/automations/:path*", "/inbox/:path*", "/logs/:path*", "/diagnostics/:path*", "/settings/:path*", "/paths/:path*", "/login"];

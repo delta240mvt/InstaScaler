@@ -38,7 +38,7 @@ describe("web route protection", () => {
     const request = new NextRequest("https://app.example/login", { headers: { cookie: "__Host-instascaler-session=expired" } });
     expect(proxy(request).headers.get("x-middleware-next")).toBe("1");
   });
-  it.each(["/dashboard", "/overview", "/campaigns/new", "/automations", "/inbox", "/logs", "/diagnostics", "/settings"])(
+  it.each(["/dashboard", "/overview", "/campaigns/new", "/automations", "/inbox", "/logs", "/diagnostics", "/settings", "/paths", "/paths/demo", "/paths/contacts", "/paths/contacts/demo"])(
     "redirects unauthenticated requests for %s",
     (path) => {
       const response = proxy(new NextRequest(`https://app.example${path}`));
