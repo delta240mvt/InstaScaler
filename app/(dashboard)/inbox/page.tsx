@@ -13,6 +13,7 @@ import { coreFetch } from "@/lib/core-api/client";
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { QuizInboxStatus } from "@/components/quiz/inbox-status";
 import AccountSelect, { type AccountOption } from "@/components/account-select";
 import { getPolishErrorMessage } from "@/lib/core-api/errors";
 import { readCache, writeCache } from "@/lib/client-cache";
@@ -364,6 +365,7 @@ export default function InboxPage() {
                 </span>
               </div>
 
+              <QuizInboxStatus key={`${selectedAccountId}:${active.contact.id}`} accountId={selectedAccountId} userId={active.contact.id} refresh={sending} />
               <div ref={scrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
                 {threadLoading && messages.length === 0 ? (
                   <p className="text-sm text-muted">Ładowanie…</p>

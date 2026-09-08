@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 // Browser tests use controlled API responses, never production accounts or sends.
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: ["local-flows.spec.ts", "local-extra.spec.ts"],
+  testMatch: ["local-flows.spec.ts", "local-extra.spec.ts", "local-quiz.spec.ts"],
   timeout: 45_000,
   workers: 2,
   retries: 0,

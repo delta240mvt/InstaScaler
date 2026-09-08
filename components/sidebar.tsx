@@ -12,6 +12,7 @@ const navGroups: Array<{ label: string; items: Array<{ label: string; href: stri
     { label: "Przegląd", href: "/overview", icon: "overview" },
     { label: "Skrzynka odbiorcza", href: "/inbox", icon: "inbox" },
     { label: "Kampanie", href: "/campaigns", icon: "campaigns" },
+    { label: "Ścieżki", href: "/paths", icon: "campaigns" },
   ] },
   { label: "Działanie systemu", items: [
     { label: "Dziennik wiadomości", href: "/logs", icon: "logs" },

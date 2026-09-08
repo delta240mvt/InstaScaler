@@ -20,6 +20,14 @@ export class MetaApiError extends Error {
   }
 }
 
+/** Bounded quiz template; unlike legacy helpers this never silently truncates input. */
+export async function sendQuizMessage(accessToken: string, instagramId: string, recipient: { id: string } | { comment_id: string }, text: string, buttons: Array<{ type: "postback"; title: string; payload: string } | { type: "web_url"; title: string; url: string }>) {
+  if (!text.trim() || text.length > (buttons.length ? 640 : 1000) || buttons.length > 3 || buttons.some(b => !b.title.trim() || b.title.length > 20)) throw new Error("QUIZ_INVALID_MESSAGE");
+  const message = buttons.length ? { attachment: { type: "template", payload: { template_type: "button", text, buttons } } } : { text };
+  const response = await fetch(`${instagramGraphBase()}/${instagramId}/messages`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ recipient, message }), signal: AbortSignal.timeout(20_000) });
+  return handleResponse<{ message_id: string; recipient_id?: string }>(response);
+}
+
 export class TokenExpiredError extends MetaApiError {
   constructor(message: string, fbTraceId?: string) {
     super(190, undefined, fbTraceId, message);

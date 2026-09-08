@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { journalEvent, verifyMetaSignature, type EventEnvelope } from "@/lib/events/journal";
 import type { CoreEnv } from "@/lib/cloudflare/env";
 import { admitInboundEvent, type AdmissionDb } from "@/lib/jobs/budget";
+import { sourceTimestamp } from "@/lib/delivery/quiz-policy";
 
 export type WebhookDb = AdmissionDb & {
   instagramAccount: { findUnique(args: unknown): Promise<{ id: string } | null> };
@@ -24,7 +25,7 @@ async function normalizeEvents(payload: unknown): Promise<EventEnvelope[]> {
       const media = value?.media as Record<string, unknown> | undefined;
       const commentId = typeof value?.id === "string" ? value.id : typeof value?.comment_id === "string" ? value.comment_id : "";
       if (change.field === "comments" && commentId && typeof from?.id === "string" && from.id !== accountId) {
-        envelopes.push({ version: 1, externalId: `comment:${commentId}`, instagramAccountId: accountId, kind: "COMMENT", receivedAt, payload: { commentId, text: typeof value?.text === "string" ? value.text : "", fromId: from.id, fromUsername: typeof from.username === "string" ? from.username : null, mediaId: typeof media?.id === "string" ? media.id : typeof value?.media_id === "string" ? value.media_id : "" } });
+        envelopes.push({ version: 1, externalId: `comment:${commentId}`, instagramAccountId: accountId, kind: "COMMENT", receivedAt, payload: { occurredAt: sourceTimestamp(value?.timestamp ?? entry.time, new Date(receivedAt), "s"), commentId, text: typeof value?.text === "string" ? value.text : "", fromId: from.id, fromUsername: typeof from.username === "string" ? from.username : null, mediaId: typeof media?.id === "string" ? media.id : typeof value?.media_id === "string" ? value.media_id : "" } });
       }
     }
     for (const messaging of records(entry.messaging)) {
@@ -35,11 +36,12 @@ async function normalizeEvents(payload: unknown): Promise<EventEnvelope[]> {
       if (typeof postback?.payload === "string") {
         const fingerprint = JSON.stringify([accountId, senderId, postback.payload, messaging.timestamp ?? entry.time ?? ""]);
         const mid = typeof postback.mid === "string" ? postback.mid : Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(fingerprint))), (byte) => byte.toString(16).padStart(2, "0")).join("");
-        envelopes.push({ version: 1, externalId: `postback:${mid}`, instagramAccountId: accountId, kind: "POSTBACK", receivedAt, payload: { userId: senderId, payload: postback.payload, mid } });
+        envelopes.push({ version: 1, externalId: `postback:${mid}`, instagramAccountId: accountId, kind: "POSTBACK", receivedAt, payload: { occurredAt: sourceTimestamp(messaging.timestamp, new Date(receivedAt), "ms"), userId: senderId, payload: postback.payload, mid } });
       }
       const message = messaging.message as Record<string, unknown> | undefined;
       if (typeof message?.mid === "string" && typeof message.text === "string" && !message.is_echo && !message.is_deleted && !message.is_unsupported) {
-        envelopes.push({ version: 1, externalId: `message:${message.mid}`, instagramAccountId: accountId, kind: "MESSAGE", receivedAt, payload: { senderId, messageId: message.mid, text: message.text } });
+        const quickReply = message.quick_reply as Record<string, unknown> | undefined;
+        envelopes.push({ version: 1, externalId: `message:${message.mid}`, instagramAccountId: accountId, kind: "MESSAGE", receivedAt, payload: { occurredAt: sourceTimestamp(messaging.timestamp, new Date(receivedAt), "ms"), quickReplyPayload: typeof quickReply?.payload === "string" ? quickReply.payload : null, senderId, messageId: message.mid, text: message.text } });
       }
     }
   }

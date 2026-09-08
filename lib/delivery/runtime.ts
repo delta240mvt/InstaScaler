@@ -1,7 +1,10 @@
 import type { JobsEnv } from "@/lib/cloudflare/env";
+import { routeQuizEvent } from "./quiz";
+import { deliverQuizWork } from "./quiz-work";
+import type { QuizDb } from "@/lib/quiz/repository";
 import { decryptToken } from "@/lib/core/meta-oauth";
 import { journalFollowUpJob, type EventEnvelope } from "@/lib/events/journal";
-import type { InstagramJob } from "@/lib/jobs/contracts";
+import { parseInstagramJob, type InstagramJob } from "@/lib/jobs/contracts";
 import { matchKeywords } from "@/lib/utils/keyword-matcher";
 import {
   getUserFollowStatus,
@@ -213,9 +216,18 @@ async function deliverFollowUp(db: DeliveryDb, env: JobsEnv, job: Extract<Instag
 export async function deliverInstagramJob(context: { db: unknown; env: JobsEnv }, job: InstagramJob, payload: unknown): Promise<JobResult> {
   const db = context.db as DeliveryDb;
   try {
+    if (job.kind === "QUIZ_STEP") {
+      const saved = parseInstagramJob(payload);
+      if (saved.kind !== "QUIZ_STEP" || saved.workId !== job.workId || saved.externalId !== job.externalId || saved.instagramAccountId !== job.instagramAccountId || saved.r2Key !== job.r2Key) return { status: "failed", code: "JOURNAL_JOB_MISMATCH" };
+      return await deliverQuizWork(context.db as QuizDb, context.env, job);
+    }
     if (job.kind === "FOLLOW_UP") return await deliverFollowUp(db, context.env, job);
     const envelope = payload as EventEnvelope;
     if (!envelope || envelope.version !== job.version || envelope.externalId !== job.externalId || envelope.instagramAccountId !== job.instagramAccountId || envelope.kind !== job.kind) return { status: "failed", code: "JOURNAL_JOB_MISMATCH" };
+    if ("quizPath" in db) {
+      const quizResult = await routeQuizEvent(context.db as QuizDb, context.env, envelope);
+      if (quizResult) return quizResult;
+    }
     if (job.kind === "COMMENT") return await deliverComment(db, context.env, envelope);
     if (job.kind === "POSTBACK") return await deliverPostback(db, context.env, envelope);
     if (job.kind === "MESSAGE") return await deliverMessage(db, context.env, envelope);

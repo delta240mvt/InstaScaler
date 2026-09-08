@@ -140,4 +140,10 @@ Gotowy quiz ma być konfigurowalnym scenariuszem demonstracyjnym z fikcyjnymi da
 - Istniejący kod: prisma/schema.prisma, workers/core/routes/webhook.ts, lib/events/journal.ts, lib/jobs/contracts.ts, lib/delivery/runtime.ts, lib/core/tracked-redirect.ts.
 - Ograniczenia prywatnych odpowiedzi: [oficjalna kolekcja Meta Instagram API](https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api?entity=request-23987686-23eacf45-3728-4e41-bcc7-6d164959327c).
 
-Po przeglądzie specyfikacji przez użytkownika powstanie plan wdrażania: model danych i logika przejść, wykonanie przez istniejącą ścieżkę zdarzeń, panel edytora oraz kontakty i kwalifikacja, a następnie testy całości. Ten dokument nie oznacza, że moduł został już zaimplementowany.
+## Stan realizacji — 2026-09-08
+
+Moduł został zaimplementowany na istniejącym branchu zgodnie z poleceniem pracy inline. Bieżąca lista wykonania i weryfikacji znajduje się w `../plans/2026-09-08-quiz-paths-todo.md`.
+
+Testy integracji i całego przepływu połączono w `__tests__/quiz-postgres.test.ts`: korzystają z rzeczywistego izolowanego PostgreSQL i produkcyjnego adaptera Neon zamiast rozbudowanej atrapy persistence. Testy panelu są w `e2e/local-quiz.spec.ts`; atrapy API nie są dowodem wysyłki przez Meta. Logika grafu, edytora, kwalifikacji i okna wiadomości ma osobne małe testy. Nie dodano zależności ani usług produkcyjnych. Prace wykonano jako jeden spójny zestaw zmian; podział commitów z planu nie był wymagany do zachowania granic modułu.
+
+Scenariusz demonstracyjny powstaje jako nieopublikowany szkic na żądanie administratora. Rzeczywisty test Instagram wymaga kontrolowanego odbiorcy i pozostaje osobnym sprawdzeniem po konfiguracji treści oraz postu.

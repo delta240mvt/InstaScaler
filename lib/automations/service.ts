@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { assertNoQuizConflict } from "@/lib/quiz/trigger-conflicts";
+import { lockAccount, type QuizDb, type QuizTx } from "@/lib/quiz/repository";
+import { QuizError } from "@/lib/quiz/errors";
 import { createReportShareSlug } from "@/lib/core/report-share";
 import { automationAnalytics, withClickAnalytics, type AnalyticsDb } from "@/lib/core/automation-analytics";
 
@@ -84,15 +87,31 @@ export async function listAutomations(db: AutomationStore, instagramAccountId?: 
   });
 }
 
-export async function createAutomation(db: { automation: Pick<AutomationStore["automation"], "create"> }, input: AutomationInput) {
+export async function createAutomation(db: { automation: Pick<AutomationStore["automation"], "create"> }, input: AutomationInput): Promise<unknown> {
+  if ("$transaction" in db && "quizPath" in db) return (db as unknown as QuizDb).$transaction(async tx => {
+    await lockAccount(tx, input.instagramAccountId);
+    await checkQuizConflict(tx, input);
+    return createAutomation(tx as unknown as typeof db, input);
+  });
   return db.automation.create({ data: normalizeAutomationInput(input) });
 }
 
-export async function updateAutomation(db: { automation: Pick<AutomationStore["automation"], "findUnique" | "update"> }, id: string, input: Partial<AutomationInput>) {
+async function checkQuizConflict(tx: QuizTx, input: AutomationInput) {
+  const value = automationInputSchema.parse(input);
+  if (value.isActive) await assertNoQuizConflict(tx, value.instagramAccountId, { allPosts: value.matchAnyPost || value.pendingNextReel, postIds: value.postId ? [value.postId] : [], keywords: value.keywords, matchAnyWord: value.matchAnyWord });
+}
+
+export async function updateAutomation(db: { automation: Pick<AutomationStore["automation"], "findUnique" | "update"> }, id: string, input: Partial<AutomationInput>): Promise<unknown> {
   const parsed = automationFieldsSchema.partial().parse(input);
   const value = Object.fromEntries(Object.entries(parsed).filter(([key]) => Object.hasOwn(input, key))) as Partial<typeof parsed>;
   const current = await db.automation.findUnique({ where: { id }, include: { trackedLinks: { orderBy: { createdAt: "asc" } } } }) as (AutomationInput & { trackedLinks?: Array<{ id: string; destinationUrl: string; label: string | null }> }) | null;
   if (!current) return null;
+  if ("$transaction" in db && "quizPath" in db) return (db as unknown as QuizDb).$transaction(async tx => {
+    for (const accountId of [...new Set([current.instagramAccountId, input.instagramAccountId ?? current.instagramAccountId])].sort()) await lockAccount(tx, accountId);
+    const latest = await tx.automation.findUniqueOrThrow({ where: { id } });
+    await checkQuizConflict(tx, { ...latest, ...input });
+    return updateAutomation(tx as unknown as typeof db, id, input);
+  });
   automationInputSchema.parse({ ...current, ...value });
   const linkFieldsPresent = ["trackedDestinationUrl", "secondaryDestinationUrl", "secondaryButtonLabel", "linkButtonLabel"].some((key) => Object.hasOwn(value, key));
   const data: Record<string, unknown> = Object.fromEntries(Object.entries(value).filter(([key]) => !["trackedDestinationUrl", "secondaryDestinationUrl", "secondaryButtonLabel"].includes(key)));
@@ -144,7 +163,8 @@ export async function importAutomations(db: { automation: Pick<AutomationStore["
       skipped.push({ row: index + 1, reason: "a campaign already exists for this post" });
       continue;
     }
-    await createAutomation(db, row);
+    try { await createAutomation(db, row); }
+    catch (error) { if (error instanceof QuizError && error.code === "quiz_trigger_conflict") { skipped.push({ row: index + 1, reason: "Konflikt z opublikowaną ścieżką quizu." }); continue; } throw error; }
     if (row.postId) usedPostIds.add(postKey(row));
     created.push({ name: row.name, postId: row.postId ?? null });
   }

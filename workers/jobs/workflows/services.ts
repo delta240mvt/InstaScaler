@@ -8,6 +8,10 @@ import { PermissionError, TokenExpiredError } from "@/lib/meta/client";
 import { assignNextMedia } from "@/lib/workflows/next-media";
 import { parseInstagramJob, type InstagramJob } from "@/lib/jobs/contracts";
 import { deliveryError } from "@/lib/delivery/errors";
+import { recoverQuizWork } from "@/lib/quiz/recovery";
+import { retainQuizWork } from "@/lib/quiz/privacy";
+import { graphSchema } from "@/lib/quiz/contracts";
+import { isQuizRecoveryEvent } from "@/lib/delivery/quiz";
 
 export type WorkflowTask = "reconcile" | "recover-journal" | "refresh-tokens" | "attach-next-reel" | "snapshot-followers" | "retention";
 type Db = ReturnType<typeof createPrisma>;
@@ -50,11 +54,13 @@ async function reconcile(db: Db, env: JobsEnv) {
     published += await runAccountWorkflowStep(db, "reconcile", account.id, async () => {
       let accountPublished = 0;
       const token = await decryptToken(account.accessToken, env.ENCRYPTION_KEY);
-      for (const mediaId of [...new Set(account.automations.flatMap((item) => item.postId ? [item.postId] : []))]) {
+      const quizPaths = db.quizPath ? await db.quizPath.findMany({ where: { instagramAccountId: account.id, acceptsEntries: true, halted: false }, include: { publishedVersion: true }, take: 100 }) : [];
+      const quizPosts = quizPaths.flatMap(p => { const start = p.publishedVersion && graphSchema.parse(p.publishedVersion.graph).nodes.find(n => n.type === "start"); return start?.type === "start" ? start.postIds : []; });
+      for (const mediaId of [...new Set([...account.automations.flatMap((item) => item.postId ? [item.postId] : []), ...quizPosts])].slice(0, 100)) {
         const comments = await getRecentMediaComments(token, mediaId, Date.now() - 65 * 60_000, 100);
         for (const comment of comments) {
           if (!comment.from?.id || comment.from.id === account.instagramId) continue;
-          const envelope: EventEnvelope = { version: 1, externalId: `comment:${comment.id}`, instagramAccountId: account.instagramId, kind: "COMMENT", receivedAt: new Date().toISOString(), payload: { commentId: comment.id, text: comment.text, fromId: comment.from.id, fromUsername: comment.from.username ?? null, mediaId } };
+          const envelope: EventEnvelope = { version: 1, externalId: `comment:${comment.id}`, instagramAccountId: account.instagramId, kind: "COMMENT", receivedAt: new Date().toISOString(), payload: { occurredAt: comment.timestamp, commentId: comment.id, text: comment.text, fromId: comment.from.id, fromUsername: comment.from.username ?? null, mediaId } };
           const saved = await journalEvent(env.EVENT_JOURNAL, envelope);
           if (await admitInboundEvent(db, { externalId: envelope.externalId, instagramAccountId: account.id, kind: envelope.kind, r2Key: saved.key, source: "POLLING" }) !== "admitted") continue;
           await env.INSTAGRAM_EVENTS.send({ version: 1, kind: "COMMENT", externalId: envelope.externalId, instagramAccountId: account.instagramId, r2Key: saved.key });
@@ -68,9 +74,10 @@ async function reconcile(db: Db, env: JobsEnv) {
 }
 
 async function recoverJournal(db: Db, env: JobsEnv) {
+  const quizzes = db.quizWork ? await recoverQuizWork(db, env) : { recovered: 0 };
   const events = await recoverJournalPrefix(db, env, "events/");
   const followUps = await recoverJournalPrefix(db, env, "follow-ups/");
-  return { recovered: events.recovered + followUps.recovered };
+  return { recovered: events.recovered + followUps.recovered + quizzes.recovered };
 }
 
 async function recoverJournalPrefix(db: Db, env: JobsEnv, prefix: "events/" | "follow-ups/") {
@@ -95,7 +102,11 @@ async function recoverJournalPrefix(db: Db, env: JobsEnv, prefix: "events/" | "f
       const job: InstagramJob = prefix === "follow-ups/"
         ? { ...parseInstagramJob(envelope), r2Key: object.key }
         : { version: 1, kind: envelope.kind, externalId: envelope.externalId, instagramAccountId: envelope.instagramAccountId, r2Key: object.key };
-      const existing = await db.processedEvent.findUnique({ where: { externalId: envelope.externalId } });
+      let existing = await db.processedEvent.findUnique({ where: { externalId: envelope.externalId } });
+      if (db.quizPath && prefix === "events/" && existing?.terminalStatus === "PROCESSING" && existing.firstSeenAt < new Date(Date.now() - 120_000) && await isQuizRecoveryEvent(db, envelope)) {
+        await db.processedEvent.updateMany({ where: { id: existing.id, terminalStatus: "PROCESSING" }, data: { terminalStatus: "RETRYING" } });
+        existing = await db.processedEvent.findUnique({ where: { externalId: envelope.externalId } });
+      }
       if (existing?.terminalStatus === "COMPLETED" || existing?.terminalStatus === "SKIPPED") {
         if (env.EVENT_JOURNAL.delete) await env.EVENT_JOURNAL.delete(object.key);
         continue;
@@ -104,7 +115,7 @@ async function recoverJournalPrefix(db: Db, env: JobsEnv, prefix: "events/" | "f
       const account = await db.instagramAccount.findUnique({ where: { instagramId: envelope.instagramAccountId }, select: { id: true } });
       if (account && !workflowAccounts.has(account.id)) workflowAccounts.set(account.id, await reserveWorkflowStep(db, account.id));
       if (account && workflowAccounts.get(account.id) && (!existing || existing.terminalStatus === "RETRYING" || existing.terminalStatus === "RECEIVED")) {
-        if (!existing && job.kind !== "FOLLOW_UP" && job.kind !== "RECOVER_R2") {
+        if (!existing && job.kind !== "FOLLOW_UP" && job.kind !== "RECOVER_R2" && job.kind !== "QUIZ_STEP") {
           if (await admitInboundEvent(db, { externalId: job.externalId, instagramAccountId: account.id, kind: job.kind, r2Key: object.key, source: "RECOVERY" }) !== "admitted") continue;
         } else if (!(await reserveQueueJob(db, account.id, 1)).allowed) continue;
         await env.INSTAGRAM_EVENTS.send(job);
@@ -173,6 +184,7 @@ async function retention(db: Db, env: JobsEnv) {
   for (const account of retentionAccounts) if (await reserveWorkflowStep(db, account.id)) capacityAvailable = true;
   if (!capacityAvailable) return { dmLogs: 0, processedEvents: 0, operationalEvents: 0 };
   const cutoff = new Date(Date.now() - 90 * 86_400_000);
+  if (db.quizWork) await retainQuizWork(db, env.EVENT_JOURNAL, cutoff);
   const expiredEvents = await db.processedEvent.findMany({ where: { firstSeenAt: { lt: cutoff }, terminalStatus: { in: ["COMPLETED", "SKIPPED", "FAILED"] } }, select: { id: true, r2Key: true }, orderBy: { firstSeenAt: "asc" }, take: 500 });
   if (env.EVENT_JOURNAL.delete) for (const event of expiredEvents) if (event.r2Key) await env.EVENT_JOURNAL.delete(event.r2Key);
   const [dmLogs, processedEvents, operationalEvents] = await db.$transaction([

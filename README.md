@@ -40,12 +40,26 @@ Logo panelu, stron informacyjnych i raportów oraz favicon korzystają ze wspól
 | Możliwość | Znaczenie w praktyce |
 | --- | --- |
 | Kampanie komentarz→DM | Słowo kluczowe, dowolny post, konkretny post albo następny post/Reel. |
+| Ścieżki START i quizy | Osobny edytor do 10 kroków: wiadomości, wybory, tekst, e-mail, warunki, tagi i przekazanie rozmowy administratorowi. |
+| Własna baza kontaktów | Historia odpowiedzi, źródłowe posty, edycja profilu i reguły wartościowego leada: e-mail, zainteresowanie, tag, pole, odpowiedź lub ukończony krok. |
 | Początkowy DM i follow-gate | Wiadomość otwierająca, kontrola obserwowania i dostarczenie materiału po potwierdzeniu. |
 | Linki i odpowiedzi | Dokładne URL-e, opcjonalne śledzenie, publiczne odpowiedzi oraz opóźnione follow-upy. |
 | Wiele kont i analityka | Do pięciu kont, skrzynka, logi dostaw, kliknięcia oraz historia obserwujących jako wykres liniowy i tabela. |
 | Odporność produkcyjna | R2, Queue, Durable Objects, Workflows, idempotencja i odzyskiwanie błędów. |
 
 ## Kształt środowiska uruchomieniowego
+
+### Moduł Ścieżki
+
+W panelu **Ścieżki** tworzysz szkic, łączysz kroki i przechodzisz bezpieczny podgląd rozmowy. Maksymalnie 10 kroków obejmuje Start, Koniec i wszystkie gałęzie. Każda publikacja tworzy nową wersję; rozpoczęte rozmowy pozostają przy swojej wersji. Nowy przykładowy szkic nie wysyła wiadomości do czasu świadomej publikacji.
+
+Wejście to komentarz z hasłem (domyślnie START) → jeden prywatny DM z przyciskiem → kliknięcie „Zaczynamy” → quiz. Sam komentarz nie otwiera standardowego okna wiadomości. Kolejne DM wymagają uprawnionej interakcji z ostatnich 24 godzin; czas pochodzi z Meta, a nie z ponowienia zadania. Brak wiarygodnej daty komentarza blokuje otwierający DM. Nie ma automatycznego DM po nowym obserwowaniu.
+
+Odbiorca może pominąć opcjonalne pytanie lub napisać STOP. Administrator może wstrzymać quiz, wznowić go albo zakończyć; ręczna odpowiedź w skrzynce wstrzymuje aktywny quiz. Wyłączenie nowych wejść nie zatrzymuje rozpoczętych rozmów — do tego służy osobne wstrzymanie całej ścieżki. Niepewna wysyłka jest oznaczona do sprawdzenia i nie jest automatycznie powtarzana.
+
+Domyślna kwalifikacja to poprawny e-mail **LUB** zainteresowanie pomocą/ofertą. W edytorze można ustawić dowolny lub wszystkie warunki. Adres jest sprawdzany składniowo, bez potwierdzenia własności i bez automatycznej zgody marketingowej. „Materiał wysłany” nie oznacza kliknięcia, przeczytania ani zakupu; quiz nie śledzi kliknięć per odbiorca. Dane kontaktów nie trafiają do publicznych raportów.
+
+Przebiegi i wysyłki są zapisywane w Neon. Kompaktowe zadania `QUIZ_STEP` używają istniejącej Queue i dziennika `quiz-steps/` w R2. Odzyskiwanie obsługuje przerwanie przed publikacją zadania i po zapisaniu odpowiedzi. Usunięcie kontaktu usuwa jego profil i odpowiedzi oraz zostawia techniczny odcisk chroniący przed odtworzeniem danych ze starego zdarzenia. Nowy, późniejszy komentarz może rozpocząć kontakt ponownie.
 
 ### Jak to działa — bez technicznego żargonu
 

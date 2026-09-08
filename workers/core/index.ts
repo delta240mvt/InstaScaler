@@ -1,4 +1,7 @@
 import { Hono } from "hono";
+import { quizPathRoutes } from "./routes/quiz-paths";
+import { quizContactRoutes } from "./routes/quiz-contacts";
+import type { QuizDb } from "@/lib/quiz/repository";
 import { clearSessionCookie, serializeSessionCookie } from "@/lib/admin-auth/cookies";
 import { verifyAdminPassword } from "@/lib/admin-auth/password";
 import { createSessionToken } from "@/lib/admin-auth/session";
@@ -51,6 +54,8 @@ export function createCoreApp(options?: { db?: CoreDatabase }) {
     return context.json({ ok: true });
   });
   app.route("/api", automationRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as AutomationStore));
+  app.route("/api", quizPathRoutes((env) => (options?.db ?? createPrisma(env.DATABASE_URL)) as unknown as QuizDb));
+  app.route("/api", quizContactRoutes((env) => (options?.db ?? createPrisma(env.DATABASE_URL)) as unknown as QuizDb));
   app.route("/api", instagramRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as InstagramDb));
   app.route("/api", dashboardRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as DashboardDb));
   app.route("/api", reportRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as ReportDb));

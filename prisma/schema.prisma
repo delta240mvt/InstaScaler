@@ -31,6 +31,8 @@ model InstagramAccount {
   dailyAggregates   DailyAggregate[]
   processedEvents   ProcessedEvent[]
   jobRuns           JobRun[]
+  quizContacts      QuizContact[]
+  quizPaths         QuizPath[]
 
   @@index([updatedAt])
 }
@@ -244,6 +246,7 @@ enum DeliveryStatus {
 }
 
 enum JobKind {
+  QUIZ_STEP
   COMMENT
   POSTBACK
   FOLLOW_UP
@@ -284,4 +287,135 @@ enum OperationalEventLevel {
   INFO
   WARNING
   ERROR
+}
+
+model QuizContact {
+  id String @id @default(cuid())
+  instagramAccountId String
+  participantKey String
+  instagramUserId String?
+  username String?
+  email String?
+  fields Json @default("{}")
+  tags String[] @default([])
+  lastInteractionAt DateTime?
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  runs QuizRun[]
+  @@unique([instagramAccountId, participantKey])
+  @@index([instagramAccountId, updatedAt])
+  @@index([instagramAccountId, email])
+  @@index([tags], type: Gin)
+}
+
+model QuizPath {
+  id String @id @default(cuid())
+  instagramAccountId String
+  name String
+  draft Json
+  draftRevision Int @default(1)
+  publishedVersionId String? @unique
+  acceptsEntries Boolean @default(false)
+  halted Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  publishedVersion QuizVersion? @relation("PublishedQuiz", fields: [publishedVersionId], references: [id], onDelete: SetNull)
+  versions QuizVersion[] @relation("QuizVersions")
+  runs QuizRun[]
+  @@index([instagramAccountId, acceptsEntries])
+}
+
+model QuizVersion {
+  id String @id @default(cuid())
+  pathId String
+  number Int
+  graph Json
+  createdAt DateTime @default(now())
+  path QuizPath @relation("QuizVersions", fields: [pathId], references: [id], onDelete: Cascade)
+  publishedBy QuizPath? @relation("PublishedQuiz")
+  runs QuizRun[]
+  @@unique([pathId, number])
+}
+
+model QuizRun {
+  id String @id @default(cuid())
+  contactId String
+  pathId String
+  versionId String
+  status QuizRunStatus @default(WAITING_START)
+  snapshot Json
+  revision Int @default(0)
+  sourceCommentId String
+  sourcePostId String
+  commentCreatedAt DateTime
+  lastInteractionAt DateTime?
+  qualified Boolean @default(false)
+  qualificationReasons String[] @default([])
+  qualifiedAt DateTime?
+  finishedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contact QuizContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  path QuizPath @relation(fields: [pathId], references: [id], onDelete: Restrict)
+  version QuizVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  events QuizEvent[]
+  work QuizWork[]
+  @@index([pathId, status, createdAt])
+  @@index([contactId, createdAt])
+  @@index([pathId, qualified, createdAt])
+}
+
+model QuizEvent {
+  id String @id @default(cuid())
+  runId String
+  externalId String @unique
+  nodeId String?
+  kind String
+  data Json @default("{}")
+  createdAt DateTime @default(now())
+  run QuizRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  @@index([runId, createdAt])
+}
+
+model QuizWork {
+  id String @id @default(cuid())
+  runId String
+  externalId String @unique
+  revision Int
+  status QuizWorkStatus @default(PENDING)
+  payload Json
+  afterSnapshot Json?
+  r2Key String?
+  messageId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  run QuizRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  @@index([status, updatedAt])
+  @@index([runId, revision])
+}
+
+enum QuizRunStatus {
+  WAITING_START
+  ACTIVE
+  WAITING_REPLY
+  WAITING_WINDOW
+  PAUSED
+  HUMAN
+  UNKNOWN
+  COMPLETED
+  STOPPED
+  RESTARTED
+  FAILED
+}
+
+enum QuizWorkStatus {
+  PENDING
+  SENDING
+  SENT
+  CANCELLED
+  FAILED
+  UNKNOWN
 }

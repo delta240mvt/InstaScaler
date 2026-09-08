@@ -7,6 +7,8 @@ const pageTitles: Record<string, { title: string; eyebrow: string }> = {
   "/dashboard": { title: "Pulpit", eyebrow: "Panel" },
   "/overview": { title: "Przegląd Instagrama", eyebrow: "Analityka" },
   "/inbox": { title: "Skrzynka odbiorcza", eyebrow: "Rozmowy" },
+  "/paths/contacts": { title: "Baza kontaktów", eyebrow: "Ścieżki" },
+  "/paths": { title: "Ścieżki", eyebrow: "Automatyzacje rozmów" },
   "/campaigns": { title: "Kampanie", eyebrow: "Automatyzacje" },
   "/campaigns/import": { title: "Import kampanii", eyebrow: "Automatyzacje" },
   "/campaigns/new": { title: "Nowa kampania", eyebrow: "Automatyzacje" },

@@ -24,9 +24,11 @@ const instagramJobSchema = z.discriminatedUnion("kind", [
   followUpJobSchema.extend({ kind: z.literal("FOLLOW_UP") }),
   journalJobSchema.extend({ kind: z.literal("MESSAGE") }),
   journalJobSchema.extend({ kind: z.literal("RECOVER_R2") }),
+  journalJobSchema.extend({ kind: z.literal("QUIZ_STEP"), workId: z.string().min(1).max(255) }),
 ]);
 
 export type InstagramJob = z.infer<typeof instagramJobSchema>;
+export type QuizStepJob = Extract<InstagramJob, { kind: "QUIZ_STEP" }>;
 
 export function parseInstagramJob(value: unknown): InstagramJob {
   return instagramJobSchema.parse(value);

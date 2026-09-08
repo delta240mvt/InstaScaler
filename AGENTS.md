@@ -56,6 +56,8 @@ Preserve these rules for every webhook or delivery change:
 
 Supported inbound kinds are `COMMENT`, `POSTBACK`, and `MESSAGE`. `FOLLOW_UP` is an internal delayed Queue job. Recovery, reconciliation, token refresh, next-Reel attachment, follower snapshots, and retention run through Cloudflare Workflows started by `WORKFLOW_SCHEDULER`.
 
+`QUIZ_STEP` is an internal send-only job containing work/run references, never contact data or tokens. Durable `QuizWork` precedes its `quiz-steps/` R2 reference and Queue publication. Contact locks, revision checks and unique QuizEvent IDs protect transitions. A quiz has at most 10 total nodes; all local computation is bounded and uses the same engine as preview. Runs pin immutable QuizVersion graphs. Do not retry SENDING/UNKNOWN work blindly. Use verified source interaction timestamps for messaging eligibility. Deleted contact tombstones prevent old journals from restoring personal data. Contacts, answers and qualification are private and must never enter public reports.
+
 ## Implementation rules
 
 ### UI and Next.js

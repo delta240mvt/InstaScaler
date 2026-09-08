@@ -2,6 +2,32 @@
 
 Ten przewodnik prowadzi od terminala Codexa do działającej instancji Cloudflare i Meta. Nie wklejaj sekretów do Git ani do rozmowy z asystentem.
 
+## Ścieżki START — konfiguracja i obsługa
+
+1. Po aktualizacji kodu wykonaj kopię bazy i sprawdź `npx prisma migrate status`. Zastosuj addytywną migrację quizów poleceniem `npm run db:migrate`; nie używaj resetu ani `db push` na produkcji. Wygeneruj klienta przez `npm run db:generate`.
+2. Otwórz **Ścieżki**, wybierz konto i utwórz szkic. Przykład jest fikcyjny. Dostosuj hasło START, zakres postów i otwierający DM. Szkic sam niczego nie wysyła.
+3. Wybierz karty na planszy. Edytuj treści, odpowiedzi, pola i tagi oraz „Połącz z krokiem”. Warunek ma osobne cele dla wyniku pozytywnego i negatywnego. Cały graf ma najwyżej 10 kroków, łącznie ze Startem i Końcem.
+4. W zakładce **Kwalifikacja** ustaw dowolny lub wszystkie warunki. Domyślnie wystarczy poprawny e-mail lub zainteresowanie pomocą. Podgląd używa tego samego silnika, ale nie korzysta z Meta i nie tworzy kontaktów.
+5. Zapisz szkic, usuń wskazane błędy i wybierz **Opublikuj i włącz**. Kolidująca aktywna kampania lub ścieżka z tym samym hasłem i zakresem postów zablokuje publikację. Publikacja nie zmienia wersji już rozpoczętych rozmów.
+6. W **Bazie kontaktów** filtruj wartościowe leady, e-mail, zainteresowanie, tagi, konto, ścieżkę i stan. Profil pokazuje odpowiedzi oraz powody kwalifikacji. Równoczesna edycja w innej karcie lub nowa odpowiedź może wywołać konflikt zapisu — lokalne zmiany pozostają widoczne.
+7. STOP zatrzymuje rozmowę. **Wyłącz nowe wejścia** pozostawia istniejące quizy; **Wstrzymaj całą ścieżkę** blokuje również ich wysyłkę. Ręczna odpowiedź w skrzynce wstrzymuje quiz odbiorcy. Wznowienie poza oknem Meta czeka na nową interakcję. Stan „Wysyłka do sprawdzenia” wymaga sprawdzenia skrzynki; nie ponawiaj niepewnego DM w ciemno.
+8. Usunięcie kontaktu usuwa odpowiedzi i zatrzymuje oczekujące kroki. Nie cofa wiadomości już dostarczonych. Techniczny odcisk blokuje odtworzenie starego kontaktu przez retry.
+
+Nowy moduł nie wymaga kolejnego bindingu ani usługi. Wdrażaj **Jobs → Core → Web**; build Web musi powstać przed wdrożeniem. Po aktualizacji sprawdź `/health`, logowanie, `/paths`, podgląd i bazę kontaktów. W razie regresji wyłącz wejścia i wstrzymaj ścieżki; można przywrócić poprzedni kod bez usuwania nowych tabel.
+
+### Testy quizów
+
+`npm test`, `npm run typecheck` i `npm run lint` sprawdzają kod. `npm run test:e2e:local` testuje panel na desktopie i mobile z kontrolowanymi odpowiedziami API; wymaga wcześniejszego `npm run build`.
+
+Testy transakcji i pełnego przepływu używają opcjonalnego `QUIZ_TEST_DATABASE_URL` wskazującego **osobną, wcześniej zmigrowaną bazę PostgreSQL**. Nigdy nie wskazuj bazy aplikacji. Brak zmiennej oznacza jawne pominięcie tej części testów. Dla lokalnego PostgreSQL helper testowy łączy adapter Neon przez lokalny proxy WebSocket; żaden proxy nie jest wdrażany na Cloudflare. Testy tworzą własne losowe rekordy i usuwają tylko swoje dane.
+
+```powershell
+$env:QUIZ_TEST_DATABASE_URL='postgresql://TEST_USER:TEST_PASSWORD@127.0.0.1:5432/instascaler_test?sslmode=disable'
+npx vitest run __tests__/quiz-postgres.test.ts
+```
+
+Test rzeczywistego Meta wykonaj na kontrolowanym poście z drugim uprawnionym kontem testowym: START → Zaczynamy → obie gałęzie quizu → testowy e-mail → STOP. Testy lokalne nie dowodzą dostarczenia DM przez produkcyjne API. Nie publikuj przykładowej ścieżki na losowych postach.
+
 ## 1. Konta i wymagania
 
 Potrzebujesz kont: Cloudflare, Neon, Meta for Developers oraz GitHub. Konto Instagram musi być typu Business albo Creator. Zainstaluj Node.js 20+, Git i otwórz lokalny terminal w Codexie.

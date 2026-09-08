@@ -1,4 +1,14 @@
+import type { GraphIssue } from "@/lib/quiz/contracts";
 const messages: Record<string, string> = {
+  quiz_revision_conflict: "Dane zmieniły się w innej karcie lub rozmowie. Zachowano Twoje zmiany. Pobierz aktualną wersję przed ponownym zapisem.",
+  quiz_trigger_conflict: "Ten zakres postów i hasło kolidują z aktywną kampanią lub ścieżką. Zmień hasło, posty albo wyłącz kolidujące wejście.",
+  quiz_invalid_graph: "Uzupełnij wskazane kroki i połączenia przed publikacją.",
+  quiz_path_not_found: "Nie znaleziono ścieżki.",
+  quiz_contact_not_found: "Nie znaleziono kontaktu.",
+  quiz_run_not_found: "Nie znaleziono przebiegu rozmowy.",
+  quiz_run_blocked: "Ta akcja jest niedostępna w obecnym stanie rozmowy.",
+  quiz_send_uncertain: "Wysyłka trwa lub jej wynik jest nieznany. Sprawdź rozmowę przed dalszą obsługą.",
+  quiz_not_published: "Najpierw opublikuj poprawną ścieżkę.",
   invalid_credentials: "Nieprawidłowy login lub hasło.",
   unauthorized: "Sesja wygasła. Zaloguj się ponownie.",
   forbidden: "Nie masz uprawnień do tej operacji. Zaloguj się ponownie.",
@@ -27,7 +37,7 @@ export function getPolishErrorMessage(code: unknown): string {
 }
 
 export class CoreApiError extends Error {
-  constructor(public readonly status: number, public readonly code: string, public readonly requestId?: string, public readonly retryAfterSeconds?: number) {
+  constructor(public readonly status: number, public readonly code: string, public readonly requestId?: string, public readonly retryAfterSeconds?: number, public readonly issues?: GraphIssue[]) {
     super(getPolishErrorMessage(code));
     this.name = "CoreApiError";
   }

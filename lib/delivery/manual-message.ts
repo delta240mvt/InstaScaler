@@ -2,6 +2,8 @@ import { z } from "zod";
 import type { JobsEnv } from "@/lib/cloudflare/env";
 import { decryptToken } from "@/lib/core/meta-oauth";
 import { RateLimitError, sendDirectMessage, TokenExpiredError } from "@/lib/meta/client";
+import { pauseQuizForManualMessage } from "@/lib/quiz/recovery";
+import type { QuizDb } from "@/lib/quiz/repository";
 
 export type ManualMessageInput = { instagramAccountId: string; recipientId: string; text: string };
 export type ManualMessageResult = { ok: true; data: { message_id: string } }
@@ -18,6 +20,7 @@ export async function sendManualMessage(db: ManualMessageDb, env: JobsEnv, input
     account = await db.instagramAccount.findUnique({ where: { id: parsed.data.instagramAccountId }, select: { instagramId: true, accessToken: true, requiresReconnect: true, webhookSubscribed: true } });
     if (!account) return { ok: false, status: 404, error: "account_not_found" };
     if (account.requiresReconnect || !account.webhookSubscribed) return { ok: false, status: 409, error: "account_paused" };
+    if ("quizContact" in db) await pauseQuizForManualMessage(db as QuizDb, parsed.data.instagramAccountId, parsed.data.recipientId);
     token = await decryptToken(account.accessToken, env.ENCRYPTION_KEY);
     const limiter = env.ACCOUNT_RATE_LIMITER.get(env.ACCOUNT_RATE_LIMITER.idFromName(account.instagramId));
     if (!(await limiter.reserve({ amount: 1, now: Date.now() })).allowed) return { ok: false, status: 429, error: "rate_limited" };
