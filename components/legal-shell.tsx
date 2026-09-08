@@ -19,20 +19,20 @@ export default function LegalShell({
       <header className="border-b border-border bg-surface/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5">
           <Link href="/" className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-accent text-white"><Icon name="campaigns" size={18} /></span><span className="font-serif text-xl font-medium tracking-[-0.04em]">InstaScaler</span>
+            <span className="flex size-9 items-center justify-center border border-foreground bg-accent text-foreground"><Icon name="campaigns" size={18} /></span><span className="text-xl font-black tracking-[-0.04em]">InstaScaler</span>
           </Link>
           <Link
             href="/login"
             className="app-button app-button-secondary min-h-10"
           >
-            Sign in
+            Zaloguj się
           </Link>
         </div>
       </header>
 
       <article className="mx-auto max-w-3xl px-5 py-14">
         <p className="app-kicker">
-          Last updated {updatedAt}
+          Aktualizacja: {updatedAt}
         </p>
         <h1 className="app-page-title mt-4 sm:text-5xl">
           {title}

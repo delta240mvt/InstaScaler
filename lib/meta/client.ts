@@ -698,7 +698,7 @@ export async function getFollowerCountSeries(
     if (err instanceof PermissionError) throw err;
     console.warn(
       "[Instagram] follower_count insights unavailable:",
-      err instanceof Error ? err.message : err
+      err instanceof MetaApiError ? `META_${err.code}` : "META_INSIGHTS_UNAVAILABLE"
     );
     return null;
   }
@@ -750,7 +750,7 @@ export async function subscribeInstagramAccountToWebhooks(
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        subscribed_fields: ["comments", "messages"],
+        subscribed_fields: ["comments", "messages", "messaging_postbacks"],
       }),
     }
   );

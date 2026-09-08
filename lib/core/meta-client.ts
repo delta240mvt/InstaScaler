@@ -32,7 +32,7 @@ export async function getInstagramProfile(accessToken: string, request: Fetch = 
 
 export async function subscribeInstagramWebhooks(instagramId: string, accessToken: string, request: Fetch = fetch): Promise<boolean> {
   const url = new URL(`https://graph.instagram.com/${encodeURIComponent(instagramId)}/subscribed_apps`);
-  url.searchParams.set("subscribed_fields", "comments,messages");
+  url.searchParams.set("subscribed_fields", "comments,messages,messaging_postbacks");
   url.searchParams.set("access_token", accessToken);
   const data = await json<{ success?: boolean }>(await request(url, { method: "POST" }));
   return data.success === true;

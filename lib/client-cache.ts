@@ -38,3 +38,17 @@ export function writeCache<T>(key: string, data: T): void {
     // Storage full or unavailable — caching is best-effort.
   }
 }
+
+/** Remove private Instagram caches after logout, disconnect, or session expiry. */
+export function clearClientCache(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const storage = window.sessionStorage;
+    for (let index = storage.length - 1; index >= 0; index--) {
+      const key = storage.key(index);
+      if (key && (key.startsWith("ig-") || key.startsWith("inbox:"))) storage.removeItem(key);
+    }
+  } catch {
+    // Storage may be unavailable in privacy modes.
+  }
+}

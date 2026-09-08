@@ -1,6 +1,7 @@
 import type { DatabaseEnv } from "@/lib/db/types";
 import type { InstagramJob } from "@/lib/jobs/contracts";
 import type { JournalBucket } from "@/lib/events/journal";
+import type { ManualMessageInput, ManualMessageResult } from "@/lib/delivery/manual-message";
 
 export type QueueBinding = {
   send(message: InstagramJob, options?: { delaySeconds?: number }): Promise<void>;
@@ -38,6 +39,7 @@ export type CoreEnv = DatabaseEnv & {
   IP_HASH_SALT: string;
   SESSION_SIGNING_KEY: string;
   LOGIN_THROTTLE: LoginThrottleBinding;
+  JOBS_API: { sendManualMessage(input: ManualMessageInput): Promise<ManualMessageResult> };
   INSTAGRAM_EVENTS: QueueBinding;
   EVENT_JOURNAL: JournalBucket;
 };

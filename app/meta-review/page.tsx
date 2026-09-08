@@ -1,48 +1,12 @@
 import type { Metadata } from "next";
 import LegalShell from "@/components/legal-shell";
 
-export const metadata: Metadata = {
-  title: "Meta App Review Support - InstaScaler",
-  description:
-    "Meta App Review notes for InstaScaler's official Instagram private reply workflow.",
-};
+export const metadata: Metadata = { title: "Weryfikacja aplikacji Meta — InstaScaler", description: "Opis przepływu odpowiedzi prywatnych dla profesjonalnych kont Instagram." };
 
 export default function MetaReviewPage() {
-  return (
-    <LegalShell
-      title="Meta App Review Support"
-      description="InstaScaler is designed for Instagram professional accounts that want to send private replies after keyword comments on their own posts or reels."
-      updatedAt="May 24, 2026"
-    >
-      <section>
-        <h2 className="text-xl font-bold text-foreground">User Flow</h2>
-        <p className="mt-3">
-          A business owner signs in by email, connects an Instagram professional
-          account through Meta OAuth, creates a keyword campaign for a post or
-          reel, and receives a webhook when someone comments. InstaScaler queues
-          the event, deduplicates it, checks rate limits, then sends a private
-          reply using the comment ID.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-foreground">Compliance Position</h2>
-        <p className="mt-3">
-          InstaScaler uses official Meta APIs, verifies webhook signatures, encrypts
-          tokens, avoids scraping, avoids password collection, and sends no more
-          than one private reply for a matched campaign/comment pair.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-foreground">Review Test Notes</h2>
-        <p className="mt-3">
-          Reviewers can use a Meta test business, connect an Instagram
-          professional account, create a keyword such as LINK, comment that
-          keyword on the selected media, and confirm that the private reply is
-          sent and logged once.
-        </p>
-      </section>
-    </LegalShell>
-  );
+  return <LegalShell title="Weryfikacja aplikacji Meta" description="Opis przepływu odpowiedzi prywatnych dla profesjonalnych kont Instagram." updatedAt="8 września 2026">
+    <section><h2 className="text-xl font-bold text-foreground">Przepływ użytkownika</h2><p className="mt-3">Administrator loguje się loginem i hasłem, łączy profesjonalne konto Instagram przez OAuth i tworzy kampanię dla posta lub rolki. Gdy pojawi się pasujący komentarz, aplikacja weryfikuje podpis zdarzenia, zapisuje je, przekazuje do kolejki i wysyła odpowiedź prywatną z użyciem identyfikatora komentarza.</p></section>
+    <section><h2 className="text-xl font-bold text-foreground">Zabezpieczenia</h2><p className="mt-3">InstaScaler korzysta z oficjalnego API Meta, sprawdza podpisy webhooków, szyfruje tokeny i kontroluje limity wysyłania. Identyfikatory zdarzeń oraz rezerwacje dostaw zapobiegają wielokrotnemu przetwarzaniu tego samego zdarzenia.</p></section>
+    <section><h2 className="text-xl font-bold text-foreground">Scenariusz testowy</h2><p className="mt-3">Połącz profesjonalne konto testowe, utwórz kampanię ze słowem LINK, a następnie dodaj komentarz z tym słowem z drugiego konta pod wybranym postem. Sprawdź prywatną odpowiedź i pojedynczy zapis dostawy. Jeśli kampania wymaga obserwowania, sprawdź też przycisk potwierdzenia i dostarczenie materiału.</p></section>
+  </LegalShell>;
 }

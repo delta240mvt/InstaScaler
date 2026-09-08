@@ -1,47 +1,12 @@
 import type { Metadata } from "next";
 import LegalShell from "@/components/legal-shell";
 
-export const metadata: Metadata = {
-  title: "Data Deletion - InstaScaler",
-  description:
-    "How InstaScaler customers can disconnect Instagram and request account or campaign data deletion.",
-};
+export const metadata: Metadata = { title: "Usuwanie danych — InstaScaler", description: "Jak odłączyć konto Instagram i zgłosić żądanie usunięcia danych." };
 
 export default function DataDeletionPage() {
-  return (
-    <LegalShell
-      title="Data Deletion"
-      description="Use this page for Meta App Review and customer requests about removing InstaScaler account, Instagram, and campaign data."
-      updatedAt="May 24, 2026"
-    >
-      <section>
-        <h2 className="text-xl font-bold text-white">Disconnect Instagram</h2>
-        <p className="mt-3">
-          Sign in, open Settings, and select Disconnect. This removes the stored
-          Instagram connection token and stops campaigns from sending private
-          replies for that workspace.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-white">Delete Workspace Data</h2>
-        <p className="mt-3">
-          To delete workspace, campaign, log, webhook, billing reference, and
-          operational diagnostic data, contact support from the email address
-          used to sign in. Include the workspace name and the Instagram username
-          connected to the workspace.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-white">Verification</h2>
-        <p className="mt-3">
-          We may ask you to verify control of the email address or connected
-          business account before deleting data. Deletion requests are processed
-          as quickly as practical unless retention is required for legal,
-          billing, fraud prevention, or security reasons.
-        </p>
-      </section>
-    </LegalShell>
-  );
+  return <LegalShell title="Usuwanie danych" description="Jak odłączyć konto Instagram i zgłosić żądanie usunięcia danych." updatedAt="8 września 2026">
+    <section><h2 className="text-xl font-bold text-foreground">Odłączenie Instagrama</h2><p className="mt-3">Zaloguj się, otwórz „Ustawienia” i wybierz „Odłącz” przy odpowiednim koncie. Aplikacja usuwa zapisane połączenie i jego token oraz zatrzymuje wysyłanie wiadomości przez kampanie tego konta.</p></section>
+    <section><h2 className="text-xl font-bold text-foreground">Usunięcie danych</h2><p className="mt-3">Aby zgłosić usunięcie danych kampanii, historii dostaw, zapisanych zdarzeń lub diagnostyki, napisz na delta240mvt@gmail.com. Podaj nazwę połączonego konta Instagram oraz zakres żądania. Nie przesyłaj haseł ani tokenów dostępu.</p></section>
+    <section><h2 className="text-xl font-bold text-foreground">Weryfikacja żądania</h2><p className="mt-3">Przed usunięciem danych możemy poprosić o potwierdzenie uprawnienia do zarządzania kontem. Żądania są realizowane możliwie szybko, z uwzględnieniem obowiązków dotyczących przechowywania danych oraz bezpieczeństwa.</p></section>
+  </LegalShell>;
 }

@@ -9,7 +9,8 @@ export function parsePostbackPayload(payload: string): {
   automationId: string;
   deliveryKey?: string;
 } | null {
-  const [kind, automationId, deliveryKey] = payload.split(":", 3);
+  const [kind, automationId, ...deliveryParts] = payload.split(":");
+  const deliveryKey = deliveryParts.join(":");
   if ((kind !== "reveal" && kind !== "followcheck") || !automationId) return null;
   return { kind, automationId, ...(deliveryKey ? { deliveryKey } : {}) };
 }

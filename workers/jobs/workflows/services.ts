@@ -3,9 +3,11 @@ import { createPrisma } from "@/lib/db/neon";
 import { decryptToken, encryptToken } from "@/lib/core/meta-oauth";
 import { journalEvent, loadJournalEvent, type EventEnvelope } from "@/lib/events/journal";
 import { getRecentMediaComments, getUserInfo, getUserMedia, refreshLongLivedToken } from "@/lib/meta/client";
-import { reserveQueueJob, reserveWorkflowStep } from "@/lib/jobs/budget";
+import { admitInboundEvent, reserveQueueJob, reserveWorkflowStep } from "@/lib/jobs/budget";
 import { PermissionError, TokenExpiredError } from "@/lib/meta/client";
 import { assignNextMedia } from "@/lib/workflows/next-media";
+import { parseInstagramJob, type InstagramJob } from "@/lib/jobs/contracts";
+import { deliveryError } from "@/lib/delivery/errors";
 
 export type WorkflowTask = "reconcile" | "recover-journal" | "refresh-tokens" | "attach-next-reel" | "snapshot-followers" | "retention";
 type Db = ReturnType<typeof createPrisma>;
@@ -17,7 +19,7 @@ export function workflowJobKind(task: WorkflowTask) {
 async function runAccountWorkflowStep<T>(db: Db, task: WorkflowTask, accountId: string, execute: () => Promise<T>, fallback: T): Promise<T> {
   const externalId = `${workflowExternalId(task)}:${accountId}`;
   const existing = await db.jobRun.findUnique({ where: { externalId } });
-  if (existing?.status === "COMPLETED" || existing?.status === "PROCESSING") return fallback;
+  if (existing?.status === "COMPLETED") return fallback;
   const run = existing
     ? await db.jobRun.update({ where: { id: existing.id }, data: { status: "PROCESSING", errorMessage: null, finishedAt: null, attempt: { increment: 1 } } })
     : await db.jobRun.create({ data: { externalId, instagramAccountId: accountId, kind: workflowJobKind(task), status: "PROCESSING" } });
@@ -26,9 +28,10 @@ async function runAccountWorkflowStep<T>(db: Db, task: WorkflowTask, accountId: 
     await db.jobRun.update({ where: { id: run.id }, data: { status: "COMPLETED", finishedAt: new Date() } });
     return result;
   } catch (error) {
-    await db.jobRun.update({ where: { id: run.id }, data: { status: "FAILED", errorMessage: error instanceof Error ? error.message.slice(0, 1000) : "Unknown account workflow error", finishedAt: new Date() } });
+    await db.jobRun.update({ where: { id: run.id }, data: { status: "FAILED", errorMessage: deliveryError(error).code, finishedAt: new Date() } });
     if (error instanceof TokenExpiredError || error instanceof PermissionError) await db.instagramAccount.update({ where: { id: accountId }, data: { webhookSubscribed: false, requiresReconnect: true, lastErrorCode: error instanceof TokenExpiredError ? "META_TOKEN_EXPIRED" : "META_PERMISSION" } });
-    await db.operationalEvent.create({ data: { source: "WORKFLOW", level: "ERROR", message: `Account workflow ${task} failed`, payload: { accountId, error: error instanceof Error ? error.message.slice(0, 500) : "unknown" } } });
+    await db.operationalEvent.create({ data: { source: "WORKFLOW", level: "ERROR", message: `Account workflow ${task} failed`, payload: { accountId, code: deliveryError(error).code } } });
+    if (deliveryError(error).status === "retry") throw error;
     return fallback;
   }
 }
@@ -53,7 +56,7 @@ async function reconcile(db: Db, env: JobsEnv) {
           if (!comment.from?.id || comment.from.id === account.instagramId) continue;
           const envelope: EventEnvelope = { version: 1, externalId: `comment:${comment.id}`, instagramAccountId: account.instagramId, kind: "COMMENT", receivedAt: new Date().toISOString(), payload: { commentId: comment.id, text: comment.text, fromId: comment.from.id, fromUsername: comment.from.username ?? null, mediaId } };
           const saved = await journalEvent(env.EVENT_JOURNAL, envelope);
-          if (!(await reserveQueueJob(db, account.id, 1)).allowed) continue;
+          if (await admitInboundEvent(db, { externalId: envelope.externalId, instagramAccountId: account.id, kind: envelope.kind, r2Key: saved.key, source: "POLLING" }) !== "admitted") continue;
           await env.INSTAGRAM_EVENTS.send({ version: 1, kind: "COMMENT", externalId: envelope.externalId, instagramAccountId: account.instagramId, r2Key: saved.key });
           accountPublished += 1;
         }
@@ -65,24 +68,52 @@ async function reconcile(db: Db, env: JobsEnv) {
 }
 
 async function recoverJournal(db: Db, env: JobsEnv) {
+  const events = await recoverJournalPrefix(db, env, "events/");
+  const followUps = await recoverJournalPrefix(db, env, "follow-ups/");
+  return { recovered: events.recovered + followUps.recovered };
+}
+
+async function recoverJournalPrefix(db: Db, env: JobsEnv, prefix: "events/" | "follow-ups/") {
   if (!env.EVENT_JOURNAL.list) return { recovered: 0 };
   let recovered = 0;
+  let scanned = 0;
   const workflowAccounts = new Map<string, boolean>();
-  let cursor: string | undefined;
+  const cursorKey = prefix === "events/" ? "control/journal-recovery-cursor.json" : "control/follow-up-recovery-cursor.json";
+  const savedCursor = await env.EVENT_JOURNAL.get(cursorKey);
+  const cursorValue: unknown = savedCursor ? JSON.parse(await savedCursor.text()) : null;
+  let cursor = typeof cursorValue === "string" ? cursorValue : undefined;
   do {
-    const page = await env.EVENT_JOURNAL.list({ prefix: "events/", cursor, limit: 100 });
+    const page = await env.EVENT_JOURNAL.list({ prefix, cursor, limit: 100 });
     for (const object of page.objects) {
-      const envelope = await loadJournalEvent(env.EVENT_JOURNAL, object.key);
+      scanned += 1;
+      let envelope: EventEnvelope;
+      try { envelope = await loadJournalEvent(env.EVENT_JOURNAL, object.key); }
+      catch (error) {
+        if (error instanceof Error && error.message === "JOURNAL_EVENT_NOT_FOUND") continue;
+        throw error;
+      }
+      const job: InstagramJob = prefix === "follow-ups/"
+        ? { ...parseInstagramJob(envelope), r2Key: object.key }
+        : { version: 1, kind: envelope.kind, externalId: envelope.externalId, instagramAccountId: envelope.instagramAccountId, r2Key: object.key };
       const existing = await db.processedEvent.findUnique({ where: { externalId: envelope.externalId } });
+      if (existing?.terminalStatus === "COMPLETED" || existing?.terminalStatus === "SKIPPED") {
+        if (env.EVENT_JOURNAL.delete) await env.EVENT_JOURNAL.delete(object.key);
+        continue;
+      }
+      if (job.kind === "FOLLOW_UP" && Date.parse(job.dueAt) > Date.now()) continue;
       const account = await db.instagramAccount.findUnique({ where: { instagramId: envelope.instagramAccountId }, select: { id: true } });
       if (account && !workflowAccounts.has(account.id)) workflowAccounts.set(account.id, await reserveWorkflowStep(db, account.id));
-      if (account && workflowAccounts.get(account.id) && (!existing || existing.terminalStatus === "RETRYING") && (await reserveQueueJob(db, account.id, 1)).allowed) {
-        await env.INSTAGRAM_EVENTS.send({ version: 1, kind: envelope.kind, externalId: envelope.externalId, instagramAccountId: envelope.instagramAccountId, r2Key: object.key });
+      if (account && workflowAccounts.get(account.id) && (!existing || existing.terminalStatus === "RETRYING" || existing.terminalStatus === "RECEIVED")) {
+        if (!existing && job.kind !== "FOLLOW_UP" && job.kind !== "RECOVER_R2") {
+          if (await admitInboundEvent(db, { externalId: job.externalId, instagramAccountId: account.id, kind: job.kind, r2Key: object.key, source: "RECOVERY" }) !== "admitted") continue;
+        } else if (!(await reserveQueueJob(db, account.id, 1)).allowed) continue;
+        await env.INSTAGRAM_EVENTS.send(job);
         recovered += 1;
       }
     }
     cursor = page.truncated ? page.cursor : undefined;
-  } while (cursor && recovered < 500);
+    await env.EVENT_JOURNAL.put(cursorKey, JSON.stringify(cursor ?? null));
+  } while (cursor && scanned < 500);
   return { recovered };
 }
 
@@ -107,8 +138,8 @@ async function attachNextReel(db: Db, env: JobsEnv) {
     attached += await runAccountWorkflowStep(db, "attach-next-reel", account.id, async () => {
       const pending = await db.automation.findMany({
         where: { instagramAccountId: account.id, pendingNextReel: true, isActive: true },
-        orderBy: { createdAt: "asc" },
-        select: { id: true, createdAt: true },
+        orderBy: { updatedAt: "asc" },
+        select: { id: true, createdAt: true, updatedAt: true },
       });
       if (pending.length === 0) return 0;
       const media = await getUserMedia(await decryptToken(account.accessToken, env.ENCRYPTION_KEY), 25);
@@ -142,11 +173,11 @@ async function retention(db: Db, env: JobsEnv) {
   for (const account of retentionAccounts) if (await reserveWorkflowStep(db, account.id)) capacityAvailable = true;
   if (!capacityAvailable) return { dmLogs: 0, processedEvents: 0, operationalEvents: 0 };
   const cutoff = new Date(Date.now() - 90 * 86_400_000);
-  const expiredJournals = await db.processedEvent.findMany({ where: { firstSeenAt: { lt: cutoff }, terminalStatus: "FAILED", r2Key: { not: null } }, select: { r2Key: true }, take: 500 });
-  if (env.EVENT_JOURNAL.delete) for (const event of expiredJournals) if (event.r2Key) await env.EVENT_JOURNAL.delete(event.r2Key);
+  const expiredEvents = await db.processedEvent.findMany({ where: { firstSeenAt: { lt: cutoff }, terminalStatus: { in: ["COMPLETED", "SKIPPED", "FAILED"] } }, select: { id: true, r2Key: true }, orderBy: { firstSeenAt: "asc" }, take: 500 });
+  if (env.EVENT_JOURNAL.delete) for (const event of expiredEvents) if (event.r2Key) await env.EVENT_JOURNAL.delete(event.r2Key);
   const [dmLogs, processedEvents, operationalEvents] = await db.$transaction([
     db.dmLog.deleteMany({ where: { createdAt: { lt: cutoff }, status: { in: ["SENT", "SKIPPED", "FAILED"] } }, limit: 500 }),
-    db.processedEvent.deleteMany({ where: { firstSeenAt: { lt: cutoff }, terminalStatus: { in: ["COMPLETED", "SKIPPED", "FAILED"] } }, limit: 500 }),
+    db.processedEvent.deleteMany({ where: { id: { in: expiredEvents.map(event => event.id) }, terminalStatus: { in: ["COMPLETED", "SKIPPED", "FAILED"] } }, limit: 500 }),
     db.operationalEvent.deleteMany({ where: { createdAt: { lt: cutoff }, resolvedAt: { not: null } }, limit: 500 }),
   ]);
   return { dmLogs: dmLogs.count, processedEvents: processedEvents.count, operationalEvents: operationalEvents.count };
@@ -172,7 +203,8 @@ export async function withJobRun(task: WorkflowTask, env: JobsEnv, execute: () =
   const db = createPrisma(env.DATABASE_URL);
   const externalId = workflowExternalId(task);
   const existing = await db.jobRun.findUnique({ where: { externalId } });
-  if (existing?.status === "COMPLETED" || existing?.status === "PROCESSING") return { skipped: true, reason: "already_started" };
+  // Cloudflare resumes the same durable step after eviction; PROCESSING is not terminal.
+  if (existing?.status === "COMPLETED") return { skipped: true, reason: "already_started" };
   const run = existing
     ? await db.jobRun.update({ where: { id: existing.id }, data: { status: "PROCESSING", errorMessage: null, finishedAt: null, attempt: { increment: 1 } } })
     : await db.jobRun.create({ data: { externalId, kind: workflowJobKind(task), status: "PROCESSING" } });
@@ -181,7 +213,7 @@ export async function withJobRun(task: WorkflowTask, env: JobsEnv, execute: () =
     await db.jobRun.update({ where: { id: run.id }, data: { status: "COMPLETED", finishedAt: new Date() } });
     return result;
   } catch (error) {
-    await db.jobRun.update({ where: { id: run.id }, data: { status: "FAILED", errorMessage: error instanceof Error ? error.message.slice(0, 1000) : "Unknown workflow error", finishedAt: new Date() } });
+    await db.jobRun.update({ where: { id: run.id }, data: { status: "FAILED", errorMessage: deliveryError(error).code, finishedAt: new Date() } });
     throw error;
   }
 }

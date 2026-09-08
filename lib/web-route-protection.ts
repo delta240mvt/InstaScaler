@@ -15,7 +15,8 @@ export function protectWebRoute(request: NextRequest) {
     login.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(login);
   }
-  if (pathname === "/login" && authenticated) return NextResponse.redirect(new URL("/dashboard", request.url));
+  // Cookie presence cannot prove validity. Core verifies the session; login must
+  // remain reachable when a stored cookie has expired or is invalid.
   return NextResponse.next();
 }
 

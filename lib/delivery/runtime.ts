@@ -1,6 +1,6 @@
 import type { JobsEnv } from "@/lib/cloudflare/env";
 import { decryptToken } from "@/lib/core/meta-oauth";
-import type { EventEnvelope } from "@/lib/events/journal";
+import { journalFollowUpJob, type EventEnvelope } from "@/lib/events/journal";
 import type { InstagramJob } from "@/lib/jobs/contracts";
 import { matchKeywords } from "@/lib/utils/keyword-matcher";
 import {
@@ -34,10 +34,10 @@ type DeliveryDb = BudgetDb & {
   instagramAccount: { findUnique(args: unknown): Promise<Account | null>; update(args: unknown): Promise<unknown> };
   operationalEvent: { create(args: unknown): Promise<unknown> };
   automation: { findFirst(args: unknown): Promise<(Automation & { instagramAccount: Account }) | null> };
-  dmLog: { findUnique(args: unknown): Promise<{ status?: string } | null>; create(args: unknown): Promise<unknown>; update(args: unknown): Promise<unknown>; upsert(args: unknown): Promise<unknown> };
+  dmLog: { findUnique(args: unknown): Promise<{ status?: string } | null>; create(args: unknown): Promise<unknown>; update(args: unknown): Promise<unknown>; updateMany(args: unknown): Promise<{ count: number }>; upsert(args: unknown): Promise<unknown> };
 };
 
-type DeliveryReservationDb = { dmLog: Pick<DeliveryDb["dmLog"], "findUnique" | "create" | "update"> };
+type DeliveryReservationDb = { dmLog: Pick<DeliveryDb["dmLog"], "findUnique" | "create" | "updateMany"> };
 
 type FailureDb = { instagramAccount: Pick<DeliveryDb["instagramAccount"], "update">; operationalEvent: DeliveryDb["operationalEvent"] };
 
@@ -52,9 +52,9 @@ export async function handleDeliveryFailure(db: FailureDb, instagramId: string, 
 
 export async function reserveDelivery(db: DeliveryReservationDb, data: { externalId: string; automationId: string; instagramAccountId: string; commenterId: string }): Promise<boolean> {
   const existing = await db.dmLog.findUnique({ where: { externalId: data.externalId } });
-  if (existing?.status === "RETRYING") {
-    await db.dmLog.update({ where: { externalId: data.externalId }, data: { status: "PROCESSING", attempts: { increment: 1 } } });
-    return true;
+  if (existing?.status === "RETRYING" || existing?.status === "FAILED") {
+    const claim = await db.dmLog.updateMany({ where: { externalId: data.externalId, status: existing.status }, data: { status: "PROCESSING", attempts: { increment: 1 } } });
+    return claim.count === 1;
   }
   if (existing) return false;
   try {
@@ -109,28 +109,29 @@ async function deliverComment(db: DeliveryDb, env: JobsEnv, envelope: EventEnvel
   try {
     if (plan.mode === "opening") {
       await sendPrivateReplyWithButton(token, account.instagramId, commentId,
-        render(automation.openingDmMessage || "Tap below to continue.", text(envelope, "fromUsername")),
-        automation.openingDmButtonLabel || "Continue",
+        render(automation.openingDmMessage || "Kliknij przycisk, aby kontynuować.", text(envelope, "fromUsername")),
+        automation.openingDmButtonLabel || "Kontynuuj",
         postbackPayload("reveal", automation.id, commentId));
     } else if (plan.mode === "followPrompt") {
       await sendPrivateReplyWithButton(token, account.instagramId, commentId,
-        render(automation.followPromptMessage || "Follow this account, then confirm below.", text(envelope, "fromUsername")),
-        automation.followPromptButtonLabel || "I'm following",
+        render(automation.followPromptMessage || "Zaobserwuj to konto, a następnie potwierdź poniżej.", text(envelope, "fromUsername")),
+        automation.followPromptButtonLabel || "Obserwuję",
         postbackPayload("followcheck", automation.id, commentId));
     } else await sendPrivateReply(token, account.instagramId, commentId, render(automation.dmMessage, text(envelope, "fromUsername"), link));
-    const completions: Promise<unknown>[] = [record(db, automation, account, externalId, userId, "SENT")];
-    if (publicReply) completions.push((async () => {
-      try {
-        await sendCommentReply(token, commentId, publicReply);
-        await db.dmLog.update({ where: { externalId }, data: { publicReplySentAt: new Date(), publicReplyError: null } });
-      } catch (error) {
-        await db.dmLog.update({ where: { externalId }, data: { publicReplyError: error instanceof Error ? error.message.slice(0, 1000) : "Public reply failed" } });
-      }
-    })());
-    await Promise.all(completions);
+    await record(db, automation, account, externalId, userId, "SENT");
   } catch (error) {
-    await db.dmLog.update({ where: { externalId }, data: { status: "RETRYING", errorMessage: error instanceof Error ? error.message.slice(0, 1000) : "Delivery failed" } });
+    await db.dmLog.update({ where: { externalId }, data: { status: "RETRYING", errorMessage: deliveryError(error).code } });
     throw error;
+  }
+  if (publicReply) {
+    try {
+      await sendCommentReply(token, commentId, publicReply);
+      await db.dmLog.update({ where: { externalId }, data: { publicReplySentAt: new Date(), publicReplyError: null } });
+    } catch (error) {
+      // Optional public-reply diagnostics must not reopen a sent private reply.
+      try { await db.dmLog.update({ where: { externalId }, data: { publicReplyError: deliveryError(error).code } }); }
+      catch { /* The primary delivery is already recorded as SENT. */ }
+    }
   }
   return { status: "sent", code: plan.mode === "opening" ? "OPENING_SENT" : "FREEBIE_SENT" };
 }
@@ -139,19 +140,22 @@ async function deliverPostback(db: DeliveryDb, env: JobsEnv, envelope: EventEnve
   const payload = text(envelope, "payload");
   const postback = parsePostbackPayload(payload);
   if (!postback) return { status: "skipped", code: "UNKNOWN_POSTBACK" };
-  const { kind, automationId, deliveryKey } = postback;
+  const { automationId, deliveryKey } = postback;
   const automation = await db.automation.findFirst({ where: { id: automationId, isActive: true }, include: { instagramAccount: true, trackedLinks: { orderBy: { createdAt: "asc" } } } });
   if (!automation || automation.instagramAccount.instagramId !== envelope.instagramAccountId) return { status: "skipped", code: "CAMPAIGN_DISABLED" };
   const account = automation.instagramAccount;
+  if (!account.webhookSubscribed) return { status: "skipped", code: "ACCOUNT_DISABLED" };
   const userId = text(envelope, "userId");
   const externalId = deliveryExternalId(automation.id, deliveryKey, userId);
+  const existing = await db.dmLog.findUnique({ where: { externalId } });
+  if (existing?.status === "SENT") return scheduleFollowUp(db, env, automation, account, deliveryKey, userId);
   const token = await decryptToken(account.accessToken, env.ENCRYPTION_KEY);
   if (automation.requireFollowBeforeFreebie) {
     const follows = await getUserFollowStatus(token, userId);
     if (follows === null) return { status: "retry", code: "FOLLOW_CHECK_UNAVAILABLE" };
     if (!follows) {
       if (!await reserve(env, account.instagramId)) return { status: "retry", code: "ACCOUNT_RATE_LIMIT" };
-      await sendDirectMessageWithButton(token, account.instagramId, userId, automation.followPromptMessage || "Follow this account, then confirm below.", automation.followPromptButtonLabel || "I'm following", postbackPayload("followcheck", automation.id, deliveryKey));
+      await sendDirectMessageWithButton(token, account.instagramId, userId, automation.followPromptMessage || "Zaobserwuj to konto, a następnie potwierdź poniżej.", automation.followPromptButtonLabel || "Obserwuję", postbackPayload("followcheck", automation.id, deliveryKey));
       return { status: "skipped", code: "FOLLOW_REQUIRED" };
     }
   }
@@ -161,14 +165,19 @@ async function deliverPostback(db: DeliveryDb, env: JobsEnv, envelope: EventEnve
     await sendDirectMessage(token, account.instagramId, userId, render(automation.dmMessage, text(envelope, "username"), deliveryUrl(automation)));
     await record(db, automation, account, externalId, userId, "SENT");
   } catch (error) {
-    await db.dmLog.update({ where: { externalId }, data: { status: "RETRYING", errorMessage: error instanceof Error ? error.message.slice(0, 1000) : "Delivery failed" } });
+    await db.dmLog.update({ where: { externalId }, data: { status: "RETRYING", errorMessage: deliveryError(error).code } });
     throw error;
   }
+  return scheduleFollowUp(db, env, automation, account, deliveryKey, userId);
+}
+
+async function scheduleFollowUp(db: DeliveryDb, env: JobsEnv, automation: Automation, account: Account, deliveryKey: string | undefined, userId: string): Promise<JobResult> {
   if (automation.followUpEnabled && automation.followUpMessage?.trim()) {
     const delaySeconds = validateDelaySeconds(automation.followUpDelayMinutes * 60);
+    const followUp = await journalFollowUpJob(env.EVENT_JOURNAL, { version: 1, kind: "FOLLOW_UP", externalId: followUpExternalId(automation.id, deliveryKey, userId), instagramAccountId: account.instagramId, automationId: automation.id, userId, dueAt: new Date(Date.now() + delaySeconds * 1000).toISOString() });
     if ((await reserveQueueJob(db, account.id, 1)).allowed) {
-      await env.INSTAGRAM_EVENTS.send({ version: 1, kind: "FOLLOW_UP", externalId: followUpExternalId(automation.id, deliveryKey, userId), instagramAccountId: account.instagramId, automationId: automation.id, userId, dueAt: new Date(Date.now() + delaySeconds * 1000).toISOString() }, { delaySeconds });
-    }
+      await env.INSTAGRAM_EVENTS.send(followUp, { delaySeconds: Math.max(0, Math.ceil((Date.parse(followUp.dueAt) - Date.now()) / 1000)) });
+    } else return { status: "retry", code: "QUEUE_BUDGET_EXHAUSTED" };
   }
   return { status: "sent", code: "FREEBIE_SENT" };
 }
@@ -185,8 +194,19 @@ async function deliverMessage(db: DeliveryDb, env: JobsEnv, envelope: EventEnvel
 async function deliverFollowUp(db: DeliveryDb, env: JobsEnv, job: Extract<InstagramJob, { kind: "FOLLOW_UP" }>): Promise<JobResult> {
   const automation = await db.automation.findFirst({ where: { id: job.automationId, isActive: true, followUpEnabled: true }, include: { instagramAccount: true } });
   if (!automation?.followUpMessage) return { status: "skipped", code: "FOLLOW_UP_DISABLED" };
+  if (automation.instagramAccount.instagramId !== job.instagramAccountId) return { status: "skipped", code: "CAMPAIGN_DISABLED" };
+  if (!automation.instagramAccount.webhookSubscribed) return { status: "skipped", code: "ACCOUNT_DISABLED" };
+  if (Date.parse(job.dueAt) > Date.now()) return { status: "retry", code: "FOLLOW_UP_NOT_DUE" };
   if (!await reserve(env, automation.instagramAccount.instagramId)) return { status: "retry", code: "ACCOUNT_RATE_LIMIT" };
-  await sendDirectMessage(await decryptToken(automation.instagramAccount.accessToken, env.ENCRYPTION_KEY), automation.instagramAccount.instagramId, job.userId, render(automation.followUpMessage, job.commenterName ?? ""));
+  const token = await decryptToken(automation.instagramAccount.accessToken, env.ENCRYPTION_KEY);
+  if (!await reserveDelivery(db, { externalId: job.externalId, automationId: automation.id, instagramAccountId: automation.instagramAccount.id, commenterId: job.userId })) return { status: "skipped", code: "DUPLICATE_DELIVERY" };
+  try {
+    await sendDirectMessage(token, automation.instagramAccount.instagramId, job.userId, render(automation.followUpMessage, job.commenterName ?? ""));
+    await record(db, automation, automation.instagramAccount, job.externalId, job.userId, "SENT");
+  } catch (error) {
+    await db.dmLog.update({ where: { externalId: job.externalId }, data: { status: "RETRYING", errorMessage: deliveryError(error).code } });
+    throw error;
+  }
   return { status: "sent", code: "FOLLOW_UP_SENT" };
 }
 
@@ -195,6 +215,7 @@ export async function deliverInstagramJob(context: { db: unknown; env: JobsEnv }
   try {
     if (job.kind === "FOLLOW_UP") return await deliverFollowUp(db, context.env, job);
     const envelope = payload as EventEnvelope;
+    if (!envelope || envelope.version !== job.version || envelope.externalId !== job.externalId || envelope.instagramAccountId !== job.instagramAccountId || envelope.kind !== job.kind) return { status: "failed", code: "JOURNAL_JOB_MISMATCH" };
     if (job.kind === "COMMENT") return await deliverComment(db, context.env, envelope);
     if (job.kind === "POSTBACK") return await deliverPostback(db, context.env, envelope);
     if (job.kind === "MESSAGE") return await deliverMessage(db, context.env, envelope);

@@ -10,10 +10,15 @@ type RouteContext = {
 };
 
 async function proxy(request: NextRequest, context: RouteContext) {
+  // Validate the browser origin before replacing it for the internal service hop.
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method)
+    && request.headers.get("origin") !== new URL(request.url).origin) {
+    return Response.json({ error: "invalid_origin" }, { status: 403 });
+  }
   const { env } = await getCloudflareContext({ async: true });
   const core = (env as unknown as { CORE_API: CoreService }).CORE_API;
   const { path } = await context.params;
-  const target = new URL(`https://core.internal/api/${path.join("/")}`);
+  const target = new URL(`https://core.internal/api/${path.map(encodeURIComponent).join("/")}`);
   target.search = new URL(request.url).search;
 
   const headers = new Headers(request.headers);
@@ -25,7 +30,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
       method: request.method,
       headers,
       redirect: "manual",
-      body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
+      body: request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer(),
     }),
   );
 

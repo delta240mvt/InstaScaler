@@ -17,6 +17,7 @@ describe("single-owner Instagram accounts", () => {
     const transaction = vi.fn(async (callback: (tx: typeof models) => Promise<unknown>) => callback(models));
     await expect(connectInstagramAccount({ $transaction: transaction }, { instagramId: "1", username: "one", accessToken: "token" })).resolves.toEqual({ id: "account" });
     expect(transaction).toHaveBeenCalledOnce();
+    expect(transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: "Serializable" });
     expect(upsert).toHaveBeenCalledOnce();
   });
 

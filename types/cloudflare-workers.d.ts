@@ -1,4 +1,8 @@
 declare module "cloudflare:workers" {
+  export abstract class WorkerEntrypoint<Env = unknown> {
+    protected env: Env;
+    constructor(ctx: unknown, env: Env);
+  }
   export type WorkflowEvent<T> = { payload: T; instanceId: string; timestamp: Date };
   export type WorkflowStep = {
     do<T>(name: string, config: { retries: { limit: number; delay: string; backoff: "constant" | "linear" | "exponential" }; timeout?: string }, callback: () => Promise<T>): Promise<T>;

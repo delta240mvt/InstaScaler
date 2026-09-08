@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { createReportShareSlug } from "@/lib/core/report-share";
+import { automationAnalytics, withClickAnalytics, type AnalyticsDb } from "@/lib/core/automation-analytics";
 
+const webUrl = z.string().url().refine((value) => ["http:", "https:"].includes(new URL(value).protocol), "A web URL is required");
 const automationFieldsSchema = z.object({
   instagramAccountId: z.string().min(1).max(255),
   name: z.string().min(1).max(100),
@@ -17,8 +19,8 @@ const automationFieldsSchema = z.object({
   openingDmMessage: z.string().max(1000).nullable().optional(),
   openingDmButtonLabel: z.string().max(64).nullable().optional(),
   linkButtonLabel: z.string().max(20).nullable().optional(),
-  trackedDestinationUrl: z.union([z.literal(""), z.string().url()]).default(""),
-  secondaryDestinationUrl: z.union([z.literal(""), z.string().url()]).default(""),
+  trackedDestinationUrl: z.union([z.literal(""), webUrl]).default(""),
+  secondaryDestinationUrl: z.union([z.literal(""), webUrl]).default(""),
   secondaryButtonLabel: z.string().max(20).nullable().optional(),
   requireFollowBeforeFreebie: z.boolean().default(false),
   followPromptMessage: z.string().max(1000).nullable().optional(),
@@ -39,7 +41,7 @@ const automationInputSchema = automationFieldsSchema.superRefine((value, context
 });
 
 export type AutomationInput = z.input<typeof automationInputSchema>;
-export type AutomationStore = { automation: { findMany(args: unknown): Promise<unknown[]>; findUnique(args: unknown): Promise<unknown | null>; create(args: { data: unknown }): Promise<unknown>; update(args: unknown): Promise<unknown>; delete(args: unknown): Promise<unknown> } };
+export type AutomationStore = AnalyticsDb & { automation: { findMany(args: unknown): Promise<unknown[]>; findUnique(args: unknown): Promise<unknown | null>; create(args: { data: unknown }): Promise<unknown>; update(args: unknown): Promise<unknown>; delete(args: unknown): Promise<unknown> } };
 
 function linkWrites(value: { trackedDestinationUrl: string; secondaryDestinationUrl: string; linkButtonLabel?: string | null; secondaryButtonLabel?: string | null }) {
   return [
@@ -71,21 +73,14 @@ export function normalizeAutomationInput(input: AutomationInput) {
 }
 
 export async function listAutomations(db: AutomationStore, instagramAccountId?: string, baseUrl?: string) {
-  const rows = await db.automation.findMany({ where: instagramAccountId && instagramAccountId !== "all" ? { instagramAccountId } : {}, orderBy: { createdAt: "desc" }, include: { trackedLinks: { include: { _count: { select: { clicks: true } } } }, instagramAccount: { select: { username: true, instagramId: true } }, dmLogs: { select: { status: true, matchedKeyword: true } }, _count: { select: { dmLogs: true } } } });
+  const rows = await db.automation.findMany({ where: instagramAccountId && instagramAccountId !== "all" ? { instagramAccountId } : {}, orderBy: { createdAt: "desc" }, include: { trackedLinks: { orderBy: { createdAt: "asc" }, include: { _count: { select: { clicks: true } } } }, instagramAccount: { select: { username: true, instagramId: true } }, _count: { select: { dmLogs: true } } } });
+  const counts = await automationAnalytics(db, rows.map((row) => (row as { id: string }).id));
   return rows.map((raw) => {
-    const row = raw as Record<string, unknown> & { dmLogs?: Array<{ status: string; matchedKeyword: string | null }>; trackedLinks?: Array<Record<string, unknown> & { _count?: { clicks: number } }> };
-    const logs = row.dmLogs ?? [];
-    const sent = logs.filter((log) => log.status === "SENT").length;
-    const skipped = logs.filter((log) => log.status === "SKIPPED").length;
-    const failed = logs.filter((log) => log.status === "FAILED").length;
+    const row = raw as Record<string, unknown> & { id: string; trackedLinks?: Array<Record<string, unknown> & { _count?: { clicks: number } }> };
     const clicks = (row.trackedLinks ?? []).reduce((total, link) => total + (link._count?.clicks ?? 0), 0);
-    const keywords = new Map<string, number>();
-    for (const log of logs) if (log.matchedKeyword) keywords.set(log.matchedKeyword, (keywords.get(log.matchedKeyword) ?? 0) + 1);
-    const { dmLogs: _dmLogs, ...automation } = row;
-    void _dmLogs;
     const trackedLinks = (row.trackedLinks ?? []).map((link) => ({ ...link, trackedUrl: baseUrl && typeof link.slug === "string" ? `${baseUrl.replace(/\/$/, "")}/r/${link.slug}` : undefined }));
     const reportUrl = baseUrl && row.reportShareEnabled && typeof row.reportShareSlug === "string" ? `${baseUrl.replace(/\/$/, "")}/reports/${row.reportShareSlug}` : null;
-    return { ...automation, trackedLinks, reportUrl, analytics: { sent, skipped, failed, clicks, ctr: sent ? Math.round(clicks / sent * 1000) / 10 : 0, topKeywords: [...keywords].sort((left, right) => right[1] - left[1]).slice(0, 5).map(([keyword, count]) => ({ keyword, count })) } };
+    return { ...row, trackedLinks, reportUrl, analytics: withClickAnalytics(counts.get(row.id), clicks) };
   });
 }
 
@@ -93,18 +88,33 @@ export async function createAutomation(db: { automation: Pick<AutomationStore["a
   return db.automation.create({ data: normalizeAutomationInput(input) });
 }
 
-export async function updateAutomation(db: { automation: Pick<AutomationStore["automation"], "update"> }, id: string, input: Partial<AutomationInput>) {
+export async function updateAutomation(db: { automation: Pick<AutomationStore["automation"], "findUnique" | "update"> }, id: string, input: Partial<AutomationInput>) {
   const parsed = automationFieldsSchema.partial().parse(input);
   const value = Object.fromEntries(Object.entries(parsed).filter(([key]) => Object.hasOwn(input, key))) as Partial<typeof parsed>;
-  const linkFieldsPresent = ["trackedDestinationUrl", "secondaryDestinationUrl", "secondaryButtonLabel"].some((key) => Object.hasOwn(value, key));
+  const current = await db.automation.findUnique({ where: { id }, include: { trackedLinks: { orderBy: { createdAt: "asc" } } } }) as (AutomationInput & { trackedLinks?: Array<{ id: string; destinationUrl: string; label: string | null }> }) | null;
+  if (!current) return null;
+  automationInputSchema.parse({ ...current, ...value });
+  const linkFieldsPresent = ["trackedDestinationUrl", "secondaryDestinationUrl", "secondaryButtonLabel", "linkButtonLabel"].some((key) => Object.hasOwn(value, key));
   const data: Record<string, unknown> = Object.fromEntries(Object.entries(value).filter(([key]) => !["trackedDestinationUrl", "secondaryDestinationUrl", "secondaryButtonLabel"].includes(key)));
   if (value.matchAnyWord) data.keywords = [];
+  if (value.matchAnyPost || value.pendingNextReel) Object.assign(data, { postId: null, postUrl: null });
   if (value.openingDmEnabled === false) Object.assign(data, { openingDmMessage: null, openingDmButtonLabel: null });
   if (value.requireFollowBeforeFreebie === false) Object.assign(data, { followPromptMessage: null, followPromptButtonLabel: null });
   if (value.followUpEnabled === false) Object.assign(data, { followUpMessage: null, followUpDelayMinutes: 0 });
   if (value.publicReplyEnabled === false) Object.assign(data, { publicReplyMessages: [], publicReplyMessage: null });
   if (value.publicReplyMessages) data.publicReplyMessage = value.publicReplyMessages.map((message) => message.trim()).filter(Boolean)[0] ?? null;
-  if (linkFieldsPresent) data.trackedLinks = { deleteMany: {}, create: linkWrites({ trackedDestinationUrl: value.trackedDestinationUrl ?? "", secondaryDestinationUrl: value.secondaryDestinationUrl ?? "", linkButtonLabel: value.linkButtonLabel, secondaryButtonLabel: value.secondaryButtonLabel }) };
+  if (linkFieldsPresent) {
+    const links = current.trackedLinks ?? [];
+    const writes = [
+      { existing: links[0], destinationUrl: value.trackedDestinationUrl ?? links[0]?.destinationUrl ?? "", label: Object.hasOwn(value, "linkButtonLabel") ? value.linkButtonLabel || null : links[0]?.label ?? null },
+      { existing: links[1], destinationUrl: value.secondaryDestinationUrl ?? links[1]?.destinationUrl ?? "", label: Object.hasOwn(value, "secondaryButtonLabel") ? value.secondaryButtonLabel || null : links[1]?.label ?? null },
+    ];
+    data.trackedLinks = {
+      update: writes.filter((link) => link.existing && link.destinationUrl).map((link) => ({ where: { id: link.existing!.id }, data: { destinationUrl: link.destinationUrl, label: link.label } })),
+      create: writes.filter((link) => !link.existing && link.destinationUrl).map((link) => ({ slug: crypto.randomUUID().replaceAll("-", ""), destinationUrl: link.destinationUrl, label: link.label })),
+      delete: writes.filter((link) => link.existing && !link.destinationUrl).map((link) => ({ id: link.existing!.id })),
+    };
+  }
   return db.automation.update({ where: { id }, data });
 }
 
@@ -121,21 +131,22 @@ export async function deleteAutomation(db: { automation: Pick<AutomationStore["a
 }
 
 export async function importAutomations(db: { automation: Pick<AutomationStore["automation"], "findMany" | "create"> }, rows: AutomationInput[]) {
-  const accountId = rows[0]?.instagramAccountId;
-  const existing = await db.automation.findMany({ where: accountId ? { instagramAccountId: accountId } : {}, select: { postId: true } }) as { postId?: string | null }[];
-  const usedPostIds = new Set(existing.flatMap((row) => row.postId ? [row.postId] : []));
-  const created: { name: string; postId: string }[] = [];
+  rows.forEach((row) => automationInputSchema.parse(row));
+  const accountIds = [...new Set(rows.map((row) => row.instagramAccountId))];
+  const postIds = rows.flatMap((row) => row.postId ? [row.postId] : []);
+  const existing = await db.automation.findMany({ where: { instagramAccountId: { in: accountIds }, postId: { in: postIds } }, select: { instagramAccountId: true, postId: true } }) as { instagramAccountId: string; postId?: string | null }[];
+  const postKey = (row: { instagramAccountId: string; postId?: string | null }) => JSON.stringify([row.instagramAccountId, row.postId]);
+  const usedPostIds = new Set(existing.map(postKey));
+  const created: { name: string; postId: string | null }[] = [];
   const skipped: { row: number; reason: string }[] = [];
   for (const [index, row] of rows.entries()) {
-    if (row.postId && usedPostIds.has(row.postId)) {
+    if (row.postId && usedPostIds.has(postKey(row))) {
       skipped.push({ row: index + 1, reason: "a campaign already exists for this post" });
       continue;
     }
     await createAutomation(db, row);
-    if (row.postId) {
-      usedPostIds.add(row.postId);
-      created.push({ name: row.name, postId: row.postId });
-    }
+    if (row.postId) usedPostIds.add(postKey(row));
+    created.push({ name: row.name, postId: row.postId ?? null });
   }
   return { created, skipped };
 }

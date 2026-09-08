@@ -6,7 +6,7 @@ import type { JobsEnv } from "@/lib/cloudflare/env";
 describe("Queue consumer", () => {
   it("does not deliver a duplicate external event twice", async () => {
     const delivery = vi.fn(async () => ({ status: "sent" as const, code: "SENT" }));
-    const db = { processedEvent: { findUnique: async () => ({ terminalStatus: "COMPLETED" }), create: vi.fn(), update: vi.fn() } };
+    const db = { processedEvent: { updateMany: vi.fn(async () => ({ count: 1 })), findUnique: async () => ({ terminalStatus: "COMPLETED" }), create: vi.fn(), update: vi.fn() } };
     const result = await processInstagramJob({ db, load: async () => ({ commentId: "comment" }), deliver: delivery }, { version: 1, kind: "COMMENT", externalId: "event", instagramAccountId: "account", r2Key: "events/x.json" });
     expect(result).toEqual({ status: "skipped", code: "DUPLICATE_EVENT" });
     expect(delivery).not.toHaveBeenCalled();
@@ -15,7 +15,7 @@ describe("Queue consumer", () => {
   it("continues a retry and removes the journal only after a terminal result", async () => {
     const remove = vi.fn(async () => undefined);
     const update = vi.fn(async () => ({}));
-    const db = { processedEvent: { findUnique: async () => ({ terminalStatus: "RETRYING" }), create: vi.fn(), update } };
+    const db = { processedEvent: { updateMany: vi.fn(async () => ({ count: 1 })), findUnique: async () => ({ terminalStatus: "RETRYING" }), create: vi.fn(), update } };
     const result = await processInstagramJob(
       { db, load: async () => ({ commentId: "comment" }), remove, deliver: async () => ({ status: "sent", code: "SENT" }) },
       { version: 1, kind: "COMMENT", externalId: "event", instagramAccountId: "account", r2Key: "events/x.json" },
@@ -27,7 +27,7 @@ describe("Queue consumer", () => {
   it("keeps the journal and marks transient failures for retry", async () => {
     const remove = vi.fn();
     const update = vi.fn(async () => ({}));
-    const db = { processedEvent: { findUnique: async () => null, create: vi.fn(async () => ({})), update } };
+    const db = { processedEvent: { updateMany: vi.fn(async () => ({ count: 1 })), findUnique: async () => null, create: vi.fn(async () => ({})), update } };
     const result = await processInstagramJob(
       { db, load: async () => ({}), remove, deliver: async () => { throw new Error("Neon unavailable"); } },
       { version: 1, kind: "MESSAGE", externalId: "message", instagramAccountId: "account", r2Key: "events/y.json" },
@@ -39,7 +39,7 @@ describe("Queue consumer", () => {
   it("keeps a permanently failed envelope for manual replay and records account ownership", async () => {
     const remove = vi.fn();
     const create = vi.fn(async () => ({}));
-    const db = { processedEvent: { findUnique: async () => null, create, update: vi.fn(async () => ({})) } };
+    const db = { processedEvent: { updateMany: vi.fn(async () => ({ count: 1 })), findUnique: async () => null, create, update: vi.fn(async () => ({})) } };
     const result = await processInstagramJob(
       { db, accountId: "internal-account", load: async () => ({}), remove, deliver: async () => ({ status: "failed", code: "META_PERMANENT" }) },
       { version: 1, kind: "COMMENT", externalId: "failed", instagramAccountId: "ig", r2Key: "events/failed.json" },

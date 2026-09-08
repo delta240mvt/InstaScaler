@@ -34,7 +34,7 @@ export function summarizeDmStatuses(rows: StatusCountRow[]) {
       const count = getCount(row._count);
       if (row.status === "SENT") summary.sent += count;
       if (row.status === "FAILED") summary.failed += count;
-      if (row.status.startsWith(SKIPPED_PREFIX)) summary.skipped += count;
+      if (row.status === "SKIPPED" || row.status.startsWith(SKIPPED_PREFIX)) summary.skipped += count;
       return summary;
     },
     { sent: 0, skipped: 0, failed: 0 }

@@ -11,6 +11,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AccountSelect, { type AccountOption } from "@/components/account-select";
 import { Icon } from "@/components/ui-icons";
+import { duplicateCampaignDraft } from "@/lib/campaign-form";
+import { coreFetch, createCoreApi } from "@/lib/core-api/client";
+import { getPolishErrorMessage } from "@/lib/core-api/errors";
 import { readCache, writeCache } from "@/lib/client-cache";
 
 interface Campaign {
@@ -65,6 +68,8 @@ interface Campaign {
 
 export default function CampaignsPage() {
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [automations, setAutomations] = useState<Campaign[]>([]);
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState("all");
@@ -86,39 +91,43 @@ export default function CampaignsPage() {
     "all"
   );
 
-  const fetchAutomations = useCallback(async () => {
+  const fetchAutomations = useCallback(async (signal?: AbortSignal) => {
     try {
       const params = new URLSearchParams();
       if (selectedAccountId !== "all") {
         params.set("instagramAccountId", selectedAccountId);
       }
-      const res = await fetch(
+      const res = await coreFetch(
         `/api/automations${params.size ? `?${params}` : ""}`,
-        { cache: "no-store" }
+        { cache: "no-store", signal }
       );
       const data = await res.json();
-      if (data.success) setAutomations(data.data);
+      if (!res.ok || !(data.data !== undefined)) throw new Error(getPolishErrorMessage(data.error));
+      if (signal?.aborted) return;
+      setAutomations(data.data);
+      setError(null);
     } catch (err) {
-      console.error("Failed to fetch campaigns:", err);
+      if (!signal?.aborted) setError(err instanceof Error ? err.message : getPolishErrorMessage(null));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [selectedAccountId]);
 
   useEffect(() => {
-    fetch("/api/dashboard/stats")
+    coreFetch("/api/dashboard/stats")
       .then((res) => res.json())
       .then((payload) => {
-        if (payload.success) setAccounts(payload.data.instagramAccounts ?? []);
+        if ((payload.data !== undefined)) setAccounts(payload.data.instagramAccounts ?? []);
       })
       .catch(console.error);
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      void fetchAutomations();
+      void fetchAutomations(controller.signal);
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => { controller.abort(); window.clearTimeout(timer); };
   }, [fetchAutomations]);
 
   // Fetch fresh post thumbnails (and reel video URLs) for the accounts in view
@@ -146,10 +155,10 @@ export default function CampaignsPage() {
 
     Promise.all(
       accountIds.map((accountId) =>
-        fetch(`/api/instagram/posts?instagramAccountId=${accountId}&limit=50`)
+        coreFetch(`/api/instagram/posts?instagramAccountId=${accountId}&limit=50`)
           .then((res) => res.json())
           .then((payload) =>
-            payload.success
+            (payload.data !== undefined)
               ? (payload.data as {
                   id: string;
                   media_type?: string;
@@ -199,8 +208,11 @@ export default function CampaignsPage() {
   }
 
   async function toggleActive(id: string, isActive: boolean) {
+    if (busyId) return;
+    setBusyId(id);
+    setError(null);
     try {
-      await fetch(`/api/automations?id=${id}`, {
+      await coreFetch(`/api/automations?id=${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !isActive }),
@@ -209,8 +221,8 @@ export default function CampaignsPage() {
         prev.map((a) => (a.id === id ? { ...a, isActive: !isActive } : a))
       );
     } catch (err) {
-      console.error("Failed to toggle:", err);
-    }
+      setError(err instanceof Error ? err.message : getPolishErrorMessage(null));
+    } finally { setBusyId(null); }
   }
 
   async function copyReelUrl(auto: Campaign) {
@@ -223,74 +235,50 @@ export default function CampaignsPage() {
         () => setCopiedId((cur) => (cur === auto.id ? null : cur)),
         1500
       );
-    } catch (err) {
-      console.error("Failed to copy reel URL:", err);
+    } catch {
+      setError("Nie udało się skopiować adresu. Spróbuj ponownie.");
     }
   }
 
   async function deleteAutomation(id: string) {
-    if (!confirm("Delete this campaign? This cannot be undone.")) return;
+    if (!confirm("Usunąć tę kampanię? Tej operacji nie można cofnąć.")) return;
     try {
-      await fetch(`/api/automations?id=${id}`, { method: "DELETE" });
+      await createCoreApi({ baseUrl: "" }).automations.delete(id);
       setAutomations((prev) => prev.filter((a) => a.id !== id));
     } catch (err) {
-      console.error("Failed to delete:", err);
+      setError(err instanceof Error ? err.message : getPolishErrorMessage(null));
     }
   }
 
   async function toggleReport(auto: Campaign) {
     setMenuOpenId(null);
     try {
-      const response = await fetch(`/api/automations/${auto.id}/report`, {
+      const response = await coreFetch(`/api/automations/${auto.id}/report`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: !auto.reportShareEnabled }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Report update failed");
+      if (!response.ok) throw new Error(getPolishErrorMessage(payload.error));
       setAutomations((current) => current.map((item) => item.id === auto.id ? { ...item, ...payload.data } : item));
     } catch (error) {
-      console.error("Failed to update public report:", error);
+      setError(error instanceof Error ? error.message : getPolishErrorMessage(null));
     }
   }
 
   async function duplicateAutomation(auto: Campaign) {
     setMenuOpenId(null);
-    const specific = !auto.matchAnyPost && !auto.pendingNextReel;
     try {
-      const res = await fetch("/api/automations", {
+      const res = await coreFetch("/api/automations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: `${auto.name} copy`,
-          instagramAccountId: auto.instagramAccountId,
-          postId: specific ? auto.postId : null,
-          postUrl: specific ? auto.postUrl : null,
-          matchAnyPost: auto.matchAnyPost,
-          pendingNextReel: auto.pendingNextReel,
-          matchAnyWord: auto.matchAnyWord,
-          keywords: auto.keywords,
-          dmMessage: auto.dmMessage,
-          openingDmEnabled: auto.openingDmEnabled,
-          openingDmMessage: auto.openingDmMessage,
-          openingDmButtonLabel: auto.openingDmButtonLabel,
-          publicReplyEnabled: auto.publicReplyEnabled,
-          publicReplyMessages: auto.publicReplyMessages,
-          trackedDestinationUrl: auto.trackedLinks[0]?.destinationUrl ?? "",
-          secondaryDestinationUrl: auto.trackedLinks[1]?.destinationUrl ?? "",
-          secondaryButtonLabel: auto.trackedLinks[1]?.label ?? "Open link",
-          requireFollowBeforeFreebie: auto.requireFollowBeforeFreebie,
-          followPromptMessage: auto.followPromptMessage,
-          followPromptButtonLabel: auto.followPromptButtonLabel,
-          wholeWordMatch: auto.wholeWordMatch,
-          isActive: false,
-        }),
+        body: JSON.stringify(duplicateCampaignDraft(auto)),
       });
       const data = await res.json();
-      if (data.success) void fetchAutomations();
-      else console.error("Duplicate failed:", data.error);
+      if ((data.data !== undefined)) void fetchAutomations();
+      else setError(getPolishErrorMessage(data.error));
     } catch (err) {
-      console.error("Failed to duplicate:", err);
+      setError(err instanceof Error ? err.message : getPolishErrorMessage(null));
     }
   }
 
@@ -318,17 +306,18 @@ export default function CampaignsPage() {
 
   return (
     <div className="space-y-6">
+      {error && <p role="alert" className="app-card p-4 text-sm text-error">{error}</p>}
       {/* Header */}
       <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="app-kicker">Automation</p>
-          <h1 className="app-page-title mt-2">Campaigns</h1>
+          <p className="app-kicker">Automatyzacja</p>
+          <h1 className="app-page-title mt-2">Kampanie</h1>
           <p className="app-page-description mt-2">
-            {filtered.length}
+            {filtered.length.toLocaleString("pl-PL")}
             {filtered.length !== automations.length
-              ? ` of ${automations.length}`
+              ? ` z ${automations.length.toLocaleString("pl-PL")}`
               : ""}{" "}
-            campaign{automations.length !== 1 ? "s" : ""}
+            kampanii
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -349,7 +338,7 @@ export default function CampaignsPage() {
             href="/campaigns/new"
             className="app-button app-button-primary flex-1 sm:flex-none"
           >
-            <Icon name="plus" size={18} /> New campaign
+            <Icon name="plus" size={18} />  Nowa kampania
           </Link>
         </div>
       </header>
@@ -360,9 +349,9 @@ export default function CampaignsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search campaigns by name, keyword, or message…"
+            placeholder="Szukaj po nazwie, słowie kluczowym lub wiadomości…"
             className="app-field w-full"
-            aria-label="Search campaigns"
+            aria-label="Szukaj kampanii"
           />
           <div className="inline-flex shrink-0 rounded-lg bg-surface p-1">
             {(["all", "active", "paused"] as const).map((s) => (
@@ -376,7 +365,7 @@ export default function CampaignsPage() {
                     : "text-muted hover:text-foreground"
                 }`}
               >
-                {s}
+                {{ all: "Wszystkie", active: "Aktywne", paused: "Wstrzymane" }[s]}
               </button>
             ))}
           </div>
@@ -386,15 +375,17 @@ export default function CampaignsPage() {
       {/* Empty state */}
       {automations.length === 0 && (
         <div className="app-card p-8 text-center sm:p-12">
-          <h3 className="text-lg font-semibold mb-2">No campaigns yet</h3>
+          <h3 className="text-lg font-semibold mb-2">Nie masz jeszcze kampanii</h3>
           <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
-            Create your first comment-to-DM campaign to turn a post or reel into a measurable conversation flow.
+
+            Utwórz pierwszą kampanię, która odpowie wiadomością prywatną na komentarz pod postem lub rolką.
           </p>
           <Link
             href="/campaigns/new"
             className="app-button app-button-primary"
           >
-            Create Campaign
+
+            Utwórz kampanię
           </Link>
         </div>
       )}
@@ -402,7 +393,8 @@ export default function CampaignsPage() {
       {/* No matches for the current filter */}
       {automations.length > 0 && filtered.length === 0 && (
         <div className="app-card p-8 text-center text-sm text-muted">
-          No campaigns match your search.
+
+          Brak kampanii pasujących do wyszukiwania.
         </div>
       )}
 
@@ -414,10 +406,10 @@ export default function CampaignsPage() {
           <div
             key={auto.id}
             onClick={() => router.push(`/campaigns/${auto.id}`)}
-            onKeyDown={(event) => { if (event.key === "Enter") router.push(`/campaigns/${auto.id}`); }}
+            onKeyDown={(event) => { if (event.key === "Enter" && event.target === event.currentTarget) router.push(`/campaigns/${auto.id}`); }}
             role="link"
             tabIndex={0}
-            aria-label={`Open campaign ${auto.name}`}
+            aria-label={`Otwórz kampanię ${auto.name}`}
             className="app-card app-card-interactive cursor-pointer p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35 sm:p-5"
           >
             {/* Wraps rather than compressing: on a phone the action buttons drop
@@ -431,13 +423,13 @@ export default function CampaignsPage() {
                       e.stopPropagation();
                       setPlayingVideo({ url: videoUrl, postUrl: auto.postUrl });
                     }}
-                    aria-label="Play reel preview"
+                    aria-label="Odtwórz podgląd rolki"
                     className="shrink-0"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={thumbnails[auto.postId]}
-                      alt="Campaign reel"
+                      alt="Rolka kampanii"
                       className="w-12 h-12 rounded object-cover border border-border hover:border-border-hover"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
@@ -455,7 +447,7 @@ export default function CampaignsPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={thumbnails[auto.postId]}
-                      alt="Campaign post"
+                      alt="Post kampanii"
                       className="w-12 h-12 rounded object-cover border border-border"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
@@ -477,21 +469,24 @@ export default function CampaignsPage() {
                         : "bg-zinc-500/10 text-muted"
                     }`}
                   >
-                    {auto.isActive ? "Active" : "Paused"}
+                    {auto.isActive ? "Aktywna" : "Wstrzymana"}
                   </span>
                   {auto.pendingNextReel && (
                     <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-warning">
-                      Waiting for next reel
+
+                      Oczekuje na następną rolkę
                     </span>
                   )}
                   {auto.requireFollowBeforeFreebie && (
                     <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-                      Follow gate
+
+                      Wymagane obserwowanie
                     </span>
                   )}
                   {auto.trackedLinks.length >= 2 && (
                     <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-                      2 links
+
+                      2 linki
                     </span>
                   )}
                 </div>
@@ -509,7 +504,7 @@ export default function CampaignsPage() {
                 </div>
 
                 {/* DM preview */}
-                <p className="text-sm text-muted truncate">&ldquo;{auto.dmMessage}&rdquo;</p>
+                <p className="text-sm text-muted truncate">&ldquo;{auto.dmMessage}”</p>
 
                 {/* Tracked link sent */}
                 {auto.trackedLinks[0]?.destinationUrl && (
@@ -518,28 +513,29 @@ export default function CampaignsPage() {
                   </p>
                 )}
                 {auto.reportShareEnabled && auto.reportUrl && (
-                  <a href={auto.reportUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-xs font-medium text-accent hover:underline">
-                    Open public report
+                  <a href={auto.reportUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="mt-2 block truncate text-xs font-medium text-accent hover:underline">
+
+                    Otwórz raport publiczny
                   </a>
                 )}
 
                 {/* Stats */}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-zinc-500">
                   <span className="font-medium text-foreground">
-                    {auto._count.dmLogs} runs
+                    {auto._count.dmLogs.toLocaleString("pl-PL")}  uruchomień
                   </span>
                   <span>·</span>
                   <span className="font-medium text-foreground">
-                    {auto.analytics.ctr}% CTR
+                    {auto.analytics.ctr.toLocaleString("pl-PL")}% CTR
                   </span>
                   <span>·</span>
-                  <span>{auto.analytics.sent} sent</span>
+                  <span>{auto.analytics.sent.toLocaleString("pl-PL")}  wysłano</span>
                   <span>·</span>
-                  <span>{auto.analytics.skipped} skipped</span>
+                  <span>{auto.analytics.skipped.toLocaleString("pl-PL")}  pominięto</span>
                   <span>·</span>
-                  <span>{auto.analytics.failed} failed</span>
+                  <span>{auto.analytics.failed.toLocaleString("pl-PL")}  błędów</span>
                   <span>·</span>
-                  <span>{auto.analytics.clicks} clicks</span>
+                  <span>{auto.analytics.clicks.toLocaleString("pl-PL")}  kliknięć</span>
                 </div>
 
                 {auto.analytics.topKeywords.length > 0 && (
@@ -549,7 +545,7 @@ export default function CampaignsPage() {
                         key={keyword.keyword}
                         className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-muted"
                       >
-                        {keyword.keyword}: {keyword.count}
+                        {keyword.keyword}: {keyword.count.toLocaleString("pl-PL")}
                       </span>
                     ))}
                   </div>
@@ -567,13 +563,14 @@ export default function CampaignsPage() {
                     onClick={() => void copyReelUrl(auto)}
                     className="app-button app-button-secondary min-h-11 shrink-0 px-3 text-xs"
                   >
-                    {copiedId === auto.id ? "Copied!" : "Copy URL"}
+                    {copiedId === auto.id ? "Skopiowano!" : "Kopiuj adres"}
                   </button>
                 )}
                 {/* Toggle */}
                 <button
                   onClick={() => toggleActive(auto.id, auto.isActive)}
-                  aria-label={`${auto.isActive ? "Pause" : "Activate"} ${auto.name}`}
+                  disabled={busyId !== null}
+                  aria-label={`${auto.isActive ? "Wstrzymaj" : "Uruchom"} ${auto.name}`}
                   aria-pressed={auto.isActive}
                   className={`
                     relative h-11 w-12 rounded-full transition-colors
@@ -594,7 +591,7 @@ export default function CampaignsPage() {
                     onClick={() =>
                       setMenuOpenId((cur) => (cur === auto.id ? null : auto.id))
                     }
-                    aria-label="More actions"
+                    aria-label="Więcej działań"
                     className="grid size-11 place-items-center rounded-xl text-lg leading-none text-muted hover:bg-surface-subtle hover:text-foreground"
                   >
                     ⋯
@@ -610,13 +607,14 @@ export default function CampaignsPage() {
                           onClick={() => void duplicateAutomation(auto)}
                           className="block w-full px-3 py-2 text-left text-sm text-foreground hover:bg-surface-hover"
                         >
-                          Duplicate
+
+                          Duplikuj
                         </button>
                         <button
                           onClick={() => void toggleReport(auto)}
                           className="block w-full px-3 py-2 text-left text-sm text-foreground hover:bg-surface-hover"
                         >
-                          {auto.reportShareEnabled ? "Disable report" : "Enable report"}
+                          {auto.reportShareEnabled ? "Wyłącz raport" : "Włącz raport"}
                         </button>
                         <button
                           onClick={() => {
@@ -625,7 +623,8 @@ export default function CampaignsPage() {
                           }}
                           className="block w-full px-3 py-2 text-left text-sm text-error hover:bg-surface-hover"
                         >
-                          Delete
+
+                          Usuń
                         </button>
                       </div>
                     </>
@@ -656,7 +655,8 @@ export default function CampaignsPage() {
                   rel="noreferrer"
                   className="text-zinc-300 hover:text-white"
                 >
-                  Open on Instagram
+
+                  Otwórz na Instagramie
                 </a>
               )}
               <button
@@ -664,7 +664,8 @@ export default function CampaignsPage() {
                 onClick={() => setPlayingVideo(null)}
                 className="text-zinc-300 hover:text-white"
               >
-                Close
+
+                Zamknij
               </button>
             </div>
             <video

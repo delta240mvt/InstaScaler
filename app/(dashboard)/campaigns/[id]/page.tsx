@@ -11,6 +11,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { coreFetch } from "@/lib/core-api/client";
+import { getPolishErrorMessage } from "@/lib/core-api/errors";
 import CampaignPreview, { type PreviewTab } from "@/components/campaign-preview";
 
 interface Campaign {
@@ -67,13 +69,14 @@ export default function CampaignDetailPage() {
   const [postThumb, setPostThumb] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("insights");
   const [previewTab, setPreviewTab] = useState<PreviewTab>("dm");
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    fetch("/api/automations", { cache: "no-store" })
+    coreFetch("/api/automations", { cache: "no-store" })
       .then((r) => r.json())
       .then((payload) => {
-        if (!payload.success) return setNotFound(true);
+        if (!(payload.data !== undefined)) return setNotFound(true);
         const found = (payload.data as Campaign[]).find((c) => c.id === id);
         if (!found) return setNotFound(true);
         setCampaign(found);
@@ -85,18 +88,18 @@ export default function CampaignDetailPage() {
   useEffect(() => {
     if (!campaign) return;
     const acct = campaign.instagramAccountId;
-    fetch(`/api/instagram/profile?instagramAccountId=${acct}`)
+    coreFetch(`/api/instagram/profile?instagramAccountId=${acct}`)
       .then((r) => r.json())
       .then((d) =>
-        setAvatarUrl(d.success ? d.data.profilePictureUrl ?? null : null)
+        setAvatarUrl((d.data !== undefined) ? d.data.profilePictureUrl ?? null : null)
       )
       .catch(() => setAvatarUrl(null));
 
     if (campaign.postId) {
-      fetch(`/api/instagram/posts?instagramAccountId=${acct}&limit=50`)
+      coreFetch(`/api/instagram/posts?instagramAccountId=${acct}&limit=50`)
         .then((r) => r.json())
         .then((payload) => {
-          if (!payload.success) return;
+          if (!(payload.data !== undefined)) return;
           const hit = (
             payload.data as {
               id: string;
@@ -114,12 +117,14 @@ export default function CampaignDetailPage() {
     if (!campaign) return;
     setBusy(true);
     try {
-      await fetch(`/api/automations?id=${campaign.id}`, {
+      await coreFetch(`/api/automations?id=${campaign.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !campaign.isActive }),
       });
       setCampaign({ ...campaign, isActive: !campaign.isActive });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : getPolishErrorMessage(null));
     } finally {
       setBusy(false);
     }
@@ -131,12 +136,13 @@ export default function CampaignDetailPage() {
   if (notFound || !campaign) {
     return (
       <div className="app-card p-8 text-center">
-        <p className="text-sm text-muted">Campaign not found.</p>
+        <p className="text-sm text-muted">Nie znaleziono kampanii.</p>
         <button
           onClick={() => router.push("/campaigns")}
           className="mt-4 rounded border border-border px-4 py-2 text-sm text-muted hover:text-foreground"
         >
-          Back to campaigns
+
+          Wróć do kampanii
         </button>
       </div>
     );
@@ -152,23 +158,24 @@ export default function CampaignDetailPage() {
   const hasSecondLink = Boolean(campaign.trackedLinks?.[1]?.destinationUrl);
 
   const trigger = campaign.matchAnyPost
-    ? "Any post or reel"
+    ? "Dowolny post lub rolka"
     : campaign.pendingNextReel
-      ? "Your next reel"
-      : "A specific post or reel";
+      ? "Następna rolka"
+      : "Wybrany post lub rolka";
   const matchText = campaign.matchAnyWord
-    ? "Any comment"
-    : campaign.keywords.join(", ") || "No keywords";
+    ? "Dowolny komentarz"
+    : campaign.keywords.join(", ") || "Brak słów kluczowych";
 
   const metrics = [
-    { label: "Sends", value: campaign.analytics.sent },
-    { label: "Clicks", value: campaign.analytics.clicks },
-    { label: "CTR", value: `${campaign.analytics.ctr}%` },
-    { label: "Failed", value: campaign.analytics.failed },
+    { label: "Wysyłki", value: campaign.analytics.sent },
+    { label: "Kliknięcia", value: campaign.analytics.clicks },
+    { label: "CTR", value: `${campaign.analytics.ctr.toLocaleString("pl-PL")}%` },
+    { label: "Błąd", value: campaign.analytics.failed },
   ];
 
   return (
     <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,360px)_1fr] lg:gap-8">
+      {error && <p role="alert" className="app-card p-4 text-sm text-error lg:col-span-2">{error}</p>}
       {/* Left: config summary */}
       <div className="space-y-6">
         <div className="flex items-center gap-2">
@@ -176,7 +183,8 @@ export default function CampaignDetailPage() {
             href="/campaigns"
             className="text-sm text-muted hover:text-foreground"
           >
-            &larr; Campaigns
+
+            &larr; Kampanie
           </Link>
         </div>
         <div className="flex items-center gap-2">
@@ -188,11 +196,11 @@ export default function CampaignDetailPage() {
                 : "bg-zinc-500/10 text-muted"
             }`}
           >
-            {campaign.isActive ? "LIVE" : "Paused"}
+            {campaign.isActive ? "AKTYWNA" : "Wstrzymana"}
           </span>
         </div>
 
-        <Summary title="When someone comments on">
+        <Summary title="Gdy ktoś skomentuje">
           <div className="flex items-center gap-3">
             {postThumb ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -203,24 +211,25 @@ export default function CampaignDetailPage() {
               />
             ) : (
               <div className="grid h-14 w-14 place-items-center rounded bg-surface-hover text-[10px] text-muted">
-                {campaign.matchAnyPost || campaign.pendingNextReel ? "Any" : "Post"}
+                {campaign.matchAnyPost || campaign.pendingNextReel ? "Dowolny" : "Post"}
               </div>
             )}
             <span className="text-sm text-foreground">{trigger}</span>
           </div>
         </Summary>
 
-        <Summary title="And this comment has">
+        <Summary title="A komentarz zawiera">
           <FieldBox>{matchText}</FieldBox>
           {campaign.dmTriggerEnabled && (
             <p className="text-xs text-muted">
-              Also replies when someone DMs{" "}
-              {campaign.matchAnyWord ? "anything" : "these words"}.
+
+              Odpowiada również na wiadomości zawierające{" "}
+              {campaign.matchAnyWord ? "dowolną treść" : "te słowa"}.
             </p>
           )}
           {publicReplies.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-xs text-muted">Public reply under the post</p>
+              <p className="text-xs text-muted">Odpowiedź publiczna pod postem</p>
               {publicReplies.map((m, i) => (
                 <FieldBox key={i}>{m}</FieldBox>
               ))}
@@ -229,38 +238,38 @@ export default function CampaignDetailPage() {
         </Summary>
 
         {campaign.openingDmEnabled && (
-          <Summary title="They will get an opening DM">
-            <FieldBox>{campaign.openingDmMessage || "Opening message"}</FieldBox>
-            <FieldBox>{campaign.openingDmButtonLabel || "Button"}</FieldBox>
+          <Summary title="Otrzyma wiadomość powitalną">
+            <FieldBox>{campaign.openingDmMessage || "Wiadomość powitalna"}</FieldBox>
+            <FieldBox>{campaign.openingDmButtonLabel || "Przycisk"}</FieldBox>
           </Summary>
         )}
 
         {campaign.requireFollowBeforeFreebie && (
-          <Summary title="They must follow first">
+          <Summary title="Najpierw musi zaobserwować konto">
             <FieldBox>
               {campaign.followPromptMessage ||
-                "quick favor before i send your link. i don't make any money from this, it's free. if you want to support me, just don't unfollow after, and star the repo on github if it helps you. tap the button once you're following and i'll send it over"}
+                "Zaobserwuj moje konto, aby otrzymać bezpłatny materiał. Gdy to zrobisz, naciśnij przycisk poniżej — wtedy wyślę Ci link."}
             </FieldBox>
             <FieldBox>
-              {campaign.followPromptButtonLabel || "i'm following"}
+              {campaign.followPromptButtonLabel || "Już obserwuję"}
             </FieldBox>
           </Summary>
         )}
 
-        <Summary title="And then, they will get a DM">
+        <Summary title="Następnie otrzyma wiadomość">
           <FieldBox>{campaign.dmMessage}</FieldBox>
           {hasLink && (
-            <FieldBox>{campaign.linkButtonLabel || "Open link"}</FieldBox>
+            <FieldBox>{campaign.linkButtonLabel || "Otwórz link"}</FieldBox>
           )}
           {hasSecondLink && (
             <FieldBox>
-              {campaign.trackedLinks?.[1]?.label || "Open link"}
+              {campaign.trackedLinks?.[1]?.label || "Otwórz link"}
             </FieldBox>
           )}
         </Summary>
 
         {hasLink && (
-          <Summary title="The exact link sent">
+          <Summary title="Wysyłany link">
             {campaign.trackedLinks
               ?.filter((link) => link.destinationUrl)
               .map((link, i) => (
@@ -271,7 +280,7 @@ export default function CampaignDetailPage() {
                     </p>
                   </div>
                   <p className="text-xs text-muted">
-                    {link.label ? `${link.label} · ` : ""}sent directly
+                    {link.label ? `${link.label} · ` : ""}wysyłany bezpośrednio
                   </p>
                 </div>
               ))}
@@ -279,12 +288,12 @@ export default function CampaignDetailPage() {
         )}
 
         {campaign.followUpEnabled && campaign.followUpMessage && (
-          <Summary title="Then a follow-up message">
+          <Summary title="Następnie wiadomość uzupełniająca">
             <FieldBox>{campaign.followUpMessage}</FieldBox>
             <p className="text-xs text-muted">
               {campaign.followUpDelayMinutes && campaign.followUpDelayMinutes > 0
-                ? `Sent ${campaign.followUpDelayMinutes} min after the link.`
-                : "Sent right after the link."}
+                ? `Wysyłana ${campaign.followUpDelayMinutes.toLocaleString("pl-PL")} min po linku.`
+                : "Wysyłana bezpośrednio po linku."}
             </p>
           </Summary>
         )}
@@ -295,10 +304,12 @@ export default function CampaignDetailPage() {
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3 border-b border-border pb-3">
           <div className="flex gap-4">
             <TabButton active={tab === "insights"} onClick={() => setTab("insights")}>
-              Insights
+
+              Statystyki
             </TabButton>
             <TabButton active={tab === "preview"} onClick={() => setTab("preview")}>
-              Preview
+
+              Podgląd
             </TabButton>
           </div>
           <div className="flex items-center gap-2">
@@ -306,7 +317,8 @@ export default function CampaignDetailPage() {
               href={`/campaigns/${campaign.id}/edit`}
               className="rounded border border-border px-3 py-1.5 text-sm text-muted hover:text-foreground"
             >
-              Edit
+
+              Edytuj
             </Link>
             <button
               onClick={toggleActive}
@@ -317,7 +329,7 @@ export default function CampaignDetailPage() {
                   : "border-success/30 text-success hover:bg-success/10"
               }`}
             >
-              {campaign.isActive ? "Stop" : "Resume"}
+              {campaign.isActive ? "Wstrzymaj" : "Wznów"}
             </button>
           </div>
         </div>
@@ -328,7 +340,7 @@ export default function CampaignDetailPage() {
               <div key={m.label} className="app-card p-4">
                 <p className="text-sm text-muted">{m.label}</p>
                 <p className="mt-1 text-2xl font-semibold text-foreground">
-                  {m.value}
+                  {typeof m.value === "number" ? m.value.toLocaleString("pl-PL") : m.value}
                 </p>
               </div>
             ))}
@@ -344,7 +356,7 @@ export default function CampaignDetailPage() {
             avatarUrl={avatarUrl}
             postThumb={postThumb}
             caption=""
-            sampleComment={campaign.matchAnyWord ? "nice!" : campaign.keywords[0] ?? "LINK"}
+            sampleComment={campaign.matchAnyWord ? "super!" : campaign.keywords[0] ?? "LINK"}
             dmTriggerEnabled={campaign.dmTriggerEnabled}
             publicReplyEnabled={campaign.publicReplyEnabled}
             publicReplyMessage={publicReplies[0] ?? ""}
@@ -353,18 +365,18 @@ export default function CampaignDetailPage() {
             openingDmButtonLabel={campaign.openingDmButtonLabel ?? ""}
             revealMessage={campaign.dmMessage}
             hasLink={hasLink}
-            linkButtonLabel={campaign.linkButtonLabel ?? "Open link"}
+            linkButtonLabel={campaign.linkButtonLabel ?? "Otwórz link"}
             linkUrl={
               campaign.trackedLinks?.[0]?.destinationUrl
             }
             hasSecondLink={hasSecondLink}
             secondLinkButtonLabel={
-              campaign.trackedLinks?.[1]?.label ?? "Open link"
+              campaign.trackedLinks?.[1]?.label ?? "Otwórz link"
             }
             requireFollow={campaign.requireFollowBeforeFreebie}
             followPromptMessage={campaign.followPromptMessage ?? ""}
             followPromptButtonLabel={
-              campaign.followPromptButtonLabel ?? "i'm following"
+              campaign.followPromptButtonLabel ?? "Już obserwuję"
             }
             followUpEnabled={campaign.followUpEnabled ?? false}
             followUpMessage={campaign.followUpMessage ?? ""}
@@ -406,6 +418,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
+      aria-pressed={active}
       className={`border-b-2 pb-2 text-sm font-medium ${
         active
           ? "border-accent text-foreground"

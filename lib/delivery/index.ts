@@ -7,6 +7,7 @@ type ProcessedEventDb = {
     findUnique(args: unknown): Promise<{ terminalStatus?: string | null } | null>;
     create(args: unknown): Promise<unknown>;
     update(args: unknown): Promise<unknown>;
+    updateMany(args: unknown): Promise<{ count: number }>;
   };
 };
 
@@ -21,14 +22,20 @@ export async function processInstagramJob(
   job: InstagramJob,
 ): Promise<JobResult> {
   const existing = await context.db.processedEvent.findUnique({ where: { externalId: job.externalId } });
-  if (existing && existing.terminalStatus !== "RETRYING") return { status: "skipped", code: "DUPLICATE_EVENT" };
-  if (!existing) await context.db.processedEvent.create({ data: { externalId: job.externalId, instagramAccountId: context.accountId, source: "r2Key" in job ? "WEBHOOK" : "INTERNAL", kind: job.kind, r2Key: "r2Key" in job ? job.r2Key : null, terminalStatus: "PROCESSING" } });
-  else await context.db.processedEvent.update({ where: { externalId: job.externalId }, data: { terminalStatus: "PROCESSING" } });
+  if (existing && existing.terminalStatus !== "RETRYING" && existing.terminalStatus !== "RECEIVED") return { status: "skipped", code: "DUPLICATE_EVENT" };
+  if (!existing) await context.db.processedEvent.create({ data: { externalId: job.externalId, instagramAccountId: context.accountId, source: job.kind === "FOLLOW_UP" ? "INTERNAL" : "WEBHOOK", kind: job.kind, r2Key: job.r2Key ?? null, terminalStatus: "PROCESSING" } });
+  else {
+    const claim = await context.db.processedEvent.updateMany({ where: { externalId: job.externalId, terminalStatus: existing.terminalStatus }, data: { terminalStatus: "PROCESSING" } });
+    if (claim.count !== 1) return { status: "retry", code: "EVENT_IN_PROGRESS" };
+  }
   try {
-    const payload = "r2Key" in job ? await context.load(job.r2Key) : job;
+    const payload = job.r2Key ? await context.load(job.r2Key) : job;
     const result = await context.deliver(job, payload);
     await context.db.processedEvent.update({ where: { externalId: job.externalId }, data: { terminalStatus: result.status === "sent" ? "COMPLETED" : result.status === "retry" ? "RETRYING" : result.status === "failed" ? "FAILED" : "SKIPPED", completedAt: result.status === "retry" ? null : new Date() } });
-    if ((result.status === "sent" || result.status === "skipped") && "r2Key" in job && context.remove) await context.remove(job.r2Key);
+    if ((result.status === "sent" || result.status === "skipped") && job.r2Key && context.remove) {
+      // Cleanup failure must never reopen a completed external side effect.
+      try { await context.remove(job.r2Key); } catch { /* Recovery removes terminal journals. */ }
+    }
     return result;
   } catch {
     await context.db.processedEvent.update({ where: { externalId: job.externalId }, data: { terminalStatus: "RETRYING" } });

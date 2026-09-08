@@ -46,3 +46,11 @@ describe("campaign builder API contract", () => {
     expect(restoreCampaignDraft({ ...completeDraft, followUpDelayMinutes: -4 }).followUpDelayMinutes).toBe(0);
   });
 });
+
+it("duplicates hidden delivery settings and user text while starting paused", async () => {
+  const { duplicateCampaignDraft } = await import("@/lib/campaign-form");
+  const copy = duplicateCampaignDraft({ ...completeDraft, id: "original", goal: "My saved goal", trackedLinks: [{ destinationUrl: "https://example.com/guide", label: "Read this" }, { destinationUrl: "https://example.com/bonus", label: "Custom bonus" }] });
+  expect(copy).toMatchObject({ name: "Free guide — kopia", isActive: false, dmTriggerEnabled: true, dmMessage: "Here it is {link}", goal: "My saved goal", followUpEnabled: true, followUpMessage: "Did it help?", followUpDelayMinutes: 60, linkButtonLabel: "Open guide", trackedDestinationUrl: "https://example.com/guide", secondaryDestinationUrl: "https://example.com/bonus", secondaryButtonLabel: "Custom bonus" });
+  expect(copy).not.toHaveProperty("id");
+  expect(copy).not.toHaveProperty("trackedLinks");
+});

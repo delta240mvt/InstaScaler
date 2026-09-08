@@ -5,6 +5,7 @@
   "compatibility_date": "2026-08-02",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  "services": [{ "binding": "JOBS_API", "service": "instascaler-jobs", "entrypoint": "ManualMessages" }],
   "durable_objects": {
     "bindings": [{ "name": "LOGIN_THROTTLE", "class_name": "LoginThrottle" }]
   },

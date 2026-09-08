@@ -33,9 +33,9 @@ export function diagnosticRoutes(getDb: (env: CoreEnv) => DiagnosticDb) {
     return context.json({ data: { jobRuns, operationalEvents, dailyCounters, globalBudgets, accounts, failedJobs, database: { bytes: storageBytes, level: databaseStorageLevel(storageBytes) } } });
   });
   app.post("/diagnostics/replay", async (context) => {
-    const body = await context.req.json<{ externalId?: unknown }>().catch(() => ({})) as { externalId?: unknown };
-    if (typeof body.externalId !== "string" || !body.externalId) return context.json({ error: "invalid_input" }, 400);
-    const result = await replayFailedEvent(getDb(context.env), context.env.INSTAGRAM_EVENTS, body.externalId);
+    const body = await context.req.json<{ externalId?: unknown } | null>().catch(() => null);
+    if (typeof body?.externalId !== "string" || !body.externalId) return context.json({ error: "invalid_input" }, 400);
+    const result = await replayFailedEvent(getDb(context.env), context.env.INSTAGRAM_EVENTS, body.externalId, context.env.EVENT_JOURNAL);
     return result.status === "queued" ? context.json({ data: result }) : context.json({ error: result.status }, result.status === "budget_exhausted" ? 429 : 404);
   });
   return app;

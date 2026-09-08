@@ -9,14 +9,14 @@ import { protectWebRoute as proxy } from "@/lib/web-route-protection";
 
 describe("admin login UI contract", () => {
   it("validates both credentials", () => {
-    expect(validateAdminCredentials("", "secret")).toBe("Enter login and password.");
-    expect(validateAdminCredentials("admin", "")).toBe("Enter login and password.");
+    expect(validateAdminCredentials("", "secret")).toBe("Wpisz login i hasło.");
+    expect(validateAdminCredentials("admin", "")).toBe("Wpisz login i hasło.");
     expect(validateAdminCredentials("admin", "secret")).toBeNull();
   });
 
   it("maps invalid and throttled login errors", () => {
-    expect(loginErrorMessage(401)).toBe("Invalid login or password.");
-    expect(loginErrorMessage(429, 125)).toBe("Too many attempts. Try again in 3 minutes.");
+    expect(loginErrorMessage(401)).toBe("Nieprawidłowy login lub hasło.");
+    expect(loginErrorMessage(429, 125)).toBe("Zbyt wiele prób. Spróbuj ponownie za 3 min.");
   });
 
   it("accepts only local callback paths", () => {
@@ -25,9 +25,19 @@ describe("admin login UI contract", () => {
     expect(safeCallbackUrl("//evil.example/steal")).toBe("/dashboard");
     expect(safeCallbackUrl("dashboard")).toBe("/dashboard");
   });
+
+  it("keeps login reachable when callbackUrl is a repeated query or malformed value", () => {
+    for (const value of [["/campaigns", "/settings"], [], {}, 42]) {
+      expect(safeCallbackUrl(value)).toBe("/dashboard");
+    }
+  });
 });
 
 describe("web route protection", () => {
+  it("allows login with an expired or invalid cookie instead of redirecting in a loop", () => {
+    const request = new NextRequest("https://app.example/login", { headers: { cookie: "__Host-instascaler-session=expired" } });
+    expect(proxy(request).headers.get("x-middleware-next")).toBe("1");
+  });
   it.each(["/dashboard", "/overview", "/campaigns/new", "/automations", "/inbox", "/logs", "/diagnostics", "/settings"])(
     "redirects unauthenticated requests for %s",
     (path) => {

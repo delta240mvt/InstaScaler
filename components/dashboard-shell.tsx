@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Sidebar from "@/components/sidebar";
 import TopBar from "@/components/top-bar";
 import { createCoreApi } from "@/lib/core-api/client";
+import { CoreApiError } from "@/lib/core-api/errors";
+import { clearClientCache } from "@/lib/client-cache";
 import { useRouter } from "next/navigation";
 
 interface DashboardShellProps {
@@ -15,6 +17,7 @@ export default function DashboardShell({
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [accounts, setAccounts] = useState<Array<{ username: string }>>([]);
+  const [sessionError, setSessionError] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
   const router = useRouter();
 
@@ -27,10 +30,17 @@ export default function DashboardShell({
           .then((payload) => setAccounts(payload.data.instagramAccounts))
           .catch(() => setAccounts([]));
       })
-      .catch(() => { router.replace("/login"); router.refresh(); });
+      .catch((error) => {
+        if (error instanceof CoreApiError && (error.status === 401 || error.status === 403)) {
+          clearClientCache();
+          router.replace("/login"); router.refresh();
+        } else { setSessionError(true); }
+      });
   }, [router]);
 
-  if (!sessionChecked) return <div className="flex min-h-dvh items-center justify-center bg-background" aria-label="Checking session"><div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-accent" /></div>;
+  if (sessionError) return <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background p-6"><p role="alert">Nie udało się sprawdzić sesji. Spróbuj ponownie.</p><button type="button" onClick={() => window.location.reload()} className="app-button app-button-primary">Spróbuj ponownie</button></div>;
+
+  if (!sessionChecked) return <div className="flex min-h-dvh items-center justify-center bg-background" aria-label="Sprawdzanie sesji"><div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-accent" /></div>;
 
   return (
     // h-dvh, not h-screen: on mobile browsers the URL bar eats into 100vh, which

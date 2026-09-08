@@ -1,5 +1,7 @@
 "use client";
 
+import { coreFetch } from "@/lib/core-api/client";
+
 /* eslint-disable @next/next/no-img-element */
 
 /**
@@ -10,6 +12,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { getPolishErrorMessage } from "@/lib/core-api/errors";
 import { readCache, writeCache } from "@/lib/client-cache";
 
 interface InstagramPost {
@@ -63,25 +66,28 @@ export default function PostPicker({
     const cached = readCache<InstagramPost[]>(cacheKey, 15 * 60 * 1000);
     // Hydrating state from cache is a legitimate effect use here.
     /* eslint-disable react-hooks/set-state-in-effect */
+    setError(null);
+    setPosts(cached.data ?? []);
+    setLoading(!cached.data);
     if (cached.data) {
       setPosts(cached.data);
       setLoading(false);
     }
     /* eslint-enable react-hooks/set-state-in-effect */
 
-    fetch(`/api/instagram/posts${params.size ? `?${params}` : ""}`)
+    coreFetch(`/api/instagram/posts${params.size ? `?${params}` : ""}`)
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
-        if (data.success) {
+        if ((data.data !== undefined)) {
           setPosts(data.data);
           writeCache(cacheKey, data.data);
         } else if (!cached.data) {
-          setError(data.error ?? "Failed to load posts");
+          setError(getPolishErrorMessage(data.error));
         }
       })
       .catch(() => {
-        if (!cancelled && !cached.data) setError("Failed to load posts");
+        if (!cancelled && !cached.data) setError("Nie udało się wczytać postów.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -106,7 +112,7 @@ export default function PostPicker({
     return (
       <div className="text-center py-8">
         <p className="text-sm text-muted">{error}</p>
-        <p className="text-xs text-zinc-500 mt-1">Connect your Instagram account first</p>
+        <p className="text-xs text-zinc-500 mt-1">Najpierw połącz konto Instagram</p>
       </div>
     );
   }
@@ -114,7 +120,7 @@ export default function PostPicker({
   if (posts.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-sm text-muted">No posts found</p>
+        <p className="text-sm text-muted">Nie znaleziono postów</p>
       </div>
     );
   }
@@ -131,21 +137,24 @@ export default function PostPicker({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search your posts by caption…"
+          aria-label="Szukaj postów po opisie"
+          placeholder="Szukaj postów po opisie…"
           className="app-field w-full"
         />
         <span className="shrink-0 text-xs text-muted">{posts.length}</span>
       </div>
       {visible.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted">
-          No posts match &ldquo;{query}&rdquo;
+
+          Brak postów pasujących do „{query}”
         </p>
       ) : (
         <>
           {usedPostIds && Object.keys(usedPostIds).length > 0 && (
             <p className="flex items-center gap-1.5 px-1 text-[11px] text-muted">
               <span className="inline-block h-2.5 w-2.5 rounded-sm border border-warning/50" />
-              Already used
+
+              Już użyty
             </p>
           )}
           <div className="grid max-h-80 grid-cols-3 gap-2 overflow-y-auto p-1 sm:grid-cols-4">
@@ -167,7 +176,7 @@ export default function PostPicker({
               setHoveredId((cur) => (cur === post.id ? null : cur))
             }
             aria-pressed={isSelected}
-            title={isUsed ? `Already used by "${usedByName}"` : undefined}
+            title={isUsed ? `Już użyty w kampanii „${usedByName}”` : undefined}
             className={`
               relative aspect-square overflow-hidden rounded-xl border-2 transition-transform hover:-translate-y-0.5
               ${
@@ -182,12 +191,12 @@ export default function PostPicker({
             {thumb ? (
               <img
                 src={thumb}
-                alt={post.caption?.slice(0, 50) ?? "Instagram post"}
+                alt={post.caption?.slice(0, 50) ?? "Post na Instagramie"}
                 className={`w-full h-full object-cover ${isUsed ? "opacity-75" : ""}`}
               />
             ) : (
               <div className="w-full h-full bg-surface flex items-center justify-center">
-                <span className="text-xs text-muted">No image</span>
+                <span className="text-xs text-muted">Brak obrazu</span>
               </div>
             )}
             {showVideo && (
@@ -205,8 +214,9 @@ export default function PostPicker({
               />
             )}
             {isSelected && (
-              <span className="absolute bottom-0 inset-x-0 bg-accent text-white text-xs py-1">
-                Selected
+              <span className="absolute bottom-0 inset-x-0 bg-accent text-black text-xs py-1">
+
+                Wybrano
               </span>
             )}
           </button>

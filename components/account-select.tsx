@@ -22,7 +22,7 @@ export default function AccountSelect({
   value,
   onChange,
   includeAll = true,
-  label = "Instagram account",
+  label = "Konto Instagram",
 }: AccountSelectProps) {
   return (
     <label className="flex min-w-0 flex-col gap-1.5 text-sm">
@@ -36,7 +36,7 @@ export default function AccountSelect({
           onChange={(event) => onChange(event.target.value)}
           className="app-field min-w-0 appearance-none pl-10 pr-10 sm:min-w-52"
         >
-          {includeAll && <option value="all">All accounts</option>}
+          {includeAll && <option value="all">Wszystkie konta</option>}
           {accounts.map((account) => (
             <option key={account.id} value={account.id}>
               @{account.username}

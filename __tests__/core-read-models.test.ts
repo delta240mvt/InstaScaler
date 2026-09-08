@@ -18,7 +18,7 @@ describe("Core read models", () => {
   it("creates unguessable report slugs and refuses disabled reports", async () => {
     expect(createReportShareSlug()).toMatch(/^[A-Za-z0-9_-]{32}$/);
     const findFirst = vi.fn(async () => null);
-    await expect(getPublicReport({ automation: { findFirst } }, "slug")).resolves.toBeNull();
+    await expect(getPublicReport({ automation: { findFirst }, $queryRawUnsafe: async () => [] as never }, "slug")).resolves.toBeNull();
     expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { reportShareSlug: "slug", reportShareEnabled: true } }));
   });
 

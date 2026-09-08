@@ -36,9 +36,9 @@ export function createCoreApp(options?: { db?: CoreDatabase }) {
   app.route("/", redirectRoutes((env) => options?.db ?? createPrisma(env.DATABASE_URL) as unknown as RedirectDb));
   app.use("/api/*", requireSameOrigin);
   app.post("/api/auth/login", async (context) => {
-    const body: { login?: unknown; password?: unknown } = await context.req.json<{ login?: unknown; password?: unknown }>().catch(() => ({}));
+    const body = await context.req.json<{ login?: unknown; password?: unknown } | null>().catch(() => null);
     const throttle = context.env.LOGIN_THROTTLE.get(context.env.LOGIN_THROTTLE.idFromName(context.req.header("cf-connecting-ip") ?? "unknown"));
-    const credentialsValid = typeof body.login === "string" && typeof body.password === "string" && body.login === context.env.ADMIN_LOGIN && await verifyAdminPassword(body.password, context.env.ADMIN_PASSWORD_PEPPER, context.env.ADMIN_PASSWORD_VERIFIER);
+    const credentialsValid = typeof body?.login === "string" && typeof body?.password === "string" && body.login === context.env.ADMIN_LOGIN && await verifyAdminPassword(body.password, context.env.ADMIN_PASSWORD_PEPPER, context.env.ADMIN_PASSWORD_VERIFIER);
     const result = await throttle.checkAndRecord(credentialsValid);
     if (!credentialsValid || !result.allowed) return context.json({ error: "invalid_credentials" }, result.allowed ? 401 : 429);
     const token = await createSessionToken(Math.floor(Date.now() / 1000), 604_800, context.env.SESSION_SIGNING_KEY);
@@ -59,7 +59,7 @@ export function createCoreApp(options?: { db?: CoreDatabase }) {
   app.notFound((context) => context.json({ error: "not_found" }, 404));
   app.onError((error, context) => {
     const requestId = crypto.randomUUID();
-    console.error("Core request failed", { requestId, error: error instanceof Error ? error.message : "unknown" });
+    console.error("Core request failed", { requestId, error: errorPayload(error, requestId).error });
     return context.json(errorPayload(error, requestId), errorStatus(error));
   });
   return app;

@@ -1,7 +1,7 @@
 import type { JobsEnv } from "@/lib/cloudflare/env";
 import { AccountRateLimiter } from "@/workers/jobs/account-rate-limiter";
 import { createPrisma } from "@/lib/db/neon";
-import { loadJournalEvent, deleteJournalEvent } from "@/lib/events/journal";
+import { loadJournalEvent, deleteJournalEvent, journalFollowUpJob } from "@/lib/events/journal";
 import { parseInstagramJob } from "@/lib/jobs/contracts";
 import { processInstagramJob, type JobResult } from "@/lib/delivery";
 import { deliverInstagramJob } from "@/lib/delivery/runtime";
@@ -47,6 +47,7 @@ const worker = {
       let job;
       try { job = parseInstagramJob(body); }
       catch { return { status: "failed", code: "INVALID_JOB" }; }
+      if (job.kind === "FOLLOW_UP" && !job.r2Key) job = await journalFollowUpJob(env.EVENT_JOURNAL, job);
       const account = await db.instagramAccount.findUnique({ where: { instagramId: job.instagramAccountId }, select: { id: true } });
       const result = await processInstagramJob({
         db,
@@ -69,6 +70,7 @@ const worker = {
 export default worker;
 
 export { AccountRateLimiter };
+export { ManualMessages } from "@/workers/jobs/manual-messages";
 export { WorkflowScheduler } from "@/workers/jobs/workflow-scheduler";
 export { ReconcileAccountWorkflow } from "@/workers/jobs/workflows/reconcile-account";
 export { RecoverJournalWorkflow } from "@/workers/jobs/workflows/recover-journal";

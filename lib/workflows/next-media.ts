@@ -3,11 +3,12 @@ import type { InstagramMedia } from "@/lib/meta/client";
 type PendingAutomation = {
   id: string;
   createdAt: Date;
+  updatedAt?: Date;
 };
 
 /**
  * Treats each pending automation as a reservation for the first publication
- * made after it was armed. When several automations wait on one account,
+ * made after it was last saved (armed). When several automations wait on one account,
  * publications are assigned chronologically so none can claim the same post.
  */
 export function assignNextMedia<T extends PendingAutomation>(pending: T[], media: InstagramMedia[]) {
@@ -18,7 +19,7 @@ export function assignNextMedia<T extends PendingAutomation>(pending: T[], media
   const assignments: { automation: T; media: InstagramMedia }[] = [];
 
   for (const automation of pending) {
-    const armedAt = automation.createdAt.getTime();
+    const armedAt = (automation.updatedAt ?? automation.createdAt).getTime();
     const next = publications.find((item) => available.has(item.id) && new Date(item.timestamp).getTime() > armedAt);
     if (!next) continue;
     available.delete(next.id);

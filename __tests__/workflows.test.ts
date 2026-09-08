@@ -36,6 +36,21 @@ describe("Jobs schedules", () => {
     expect(recover.create).toHaveBeenCalledWith({ id: expect.stringMatching(/^workflow-recover-journal-/) });
     expect(attach.create).toHaveBeenCalledWith({ id: expect.stringMatching(/^workflow-attach-next-reel-/) });
   });
+  it("reports only successfully created workflows", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const env = { DATABASE_URL: "postgresql://configured", RECONCILE_WORKFLOW: { create: async () => { throw new Error("unavailable"); } }, RECOVER_JOURNAL_WORKFLOW: { create: async () => ({}) }, ATTACH_NEXT_REEL_WORKFLOW: { create: async () => ({}) } } as unknown as JobsEnv;
+      expect(await startScheduledWorkflows("7 * * * *", env)).toEqual({ started: 2, skipped: false });
+    } finally { warn.mockRestore(); }
+  });
+  it("does not log upstream secrets when workflow creation fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const env = { DATABASE_URL: "postgresql://configured", RETENTION_WORKFLOW: { create: async () => { throw new Error("request failed access_token=synthetic-private-value"); } } } as unknown as JobsEnv;
+      expect(await startScheduledWorkflows("20 3 * * *", env)).toEqual({ started: 0, skipped: false });
+      expect(warn).toHaveBeenCalledExactlyOnceWith("Scheduled Workflow was not created", { task: "retention", code: "workflow_create_failed" });
+    } finally { warn.mockRestore(); }
+  });
   it("maps one hourly Durable Object alarm to hourly and daily work", () => {
     expect(scheduledTasksForTime(new Date("2026-08-02T05:07:00Z"))).toEqual(["reconcile", "recover-journal", "attach-next-reel", "refresh-tokens"]);
     expect(nextHourlyAlarm(new Date("2026-08-02T05:08:00Z").getTime())).toBe(new Date("2026-08-02T06:07:00Z").getTime());
@@ -58,5 +73,12 @@ describe("Jobs schedules", () => {
       ["campaign-a", "post"],
       ["campaign-b", "reel"],
     ]);
+  });
+  it("arms an edited campaign from its last save instead of its original creation", () => {
+    const assignments = assignNextMedia([{ id: "existing", createdAt: new Date("2026-08-01T00:00:00Z"), updatedAt: new Date("2026-09-08T10:00:00Z") }], [
+      { id: "already-published", media_type: "IMAGE", timestamp: "2026-09-08T09:00:00Z" },
+      { id: "next", media_type: "VIDEO", timestamp: "2026-09-08T11:00:00Z" },
+    ]);
+    expect(assignments.map(item => item.media.id)).toEqual(["next"]);
   });
 });

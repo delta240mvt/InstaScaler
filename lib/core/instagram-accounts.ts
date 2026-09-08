@@ -13,7 +13,7 @@ type AccountConnectionModels = {
 };
 
 export type AccountConnectionDb = {
-  $transaction(callback: (transaction: AccountConnectionModels) => Promise<unknown>): Promise<unknown>;
+  $transaction(callback: (transaction: AccountConnectionModels) => Promise<unknown>, options?: { isolationLevel: "Serializable" }): Promise<unknown>;
 };
 
 export async function connectInstagramAccount(db: AccountConnectionDb, input: { instagramId: string; username: string; name?: string | null; accessToken: string; tokenExpiresAt?: Date | null; webhookSubscribed?: boolean }) {
@@ -22,7 +22,7 @@ export async function connectInstagramAccount(db: AccountConnectionDb, input: { 
     if (!existing && await transaction.instagramAccount.count() >= 5) throw new AccountLimitError("Up to five Instagram accounts are allowed");
     const data = { ...input, requiresReconnect: false, lastErrorCode: null };
     return transaction.instagramAccount.upsert({ where: { instagramId: input.instagramId }, create: data, update: data });
-  });
+  }, { isolationLevel: "Serializable" });
 }
 
 export function listInstagramAccounts(db: AccountDb) {

@@ -42,10 +42,11 @@ export async function startScheduledWorkflows(cron: string, env: JobsEnv): Promi
 
 export async function startWorkflowTasks(tasks: ScheduledTask[], env: JobsEnv): Promise<{ started: number; skipped: boolean }> {
   if (!env.DATABASE_URL) return { started: 0, skipped: true };
+  let started = 0;
   await Promise.all(tasks.map(async (task) => {
     const id = workflowExternalId(task).replaceAll(":", "-");
-    try { await bindingForTask(env, task).create({ id }); }
-    catch (error) { console.warn("Scheduled Workflow was not created", { task, error: error instanceof Error ? error.message : "unknown" }); }
+    try { await bindingForTask(env, task).create({ id }); started += 1; }
+    catch { console.warn("Scheduled Workflow was not created", { task, code: "workflow_create_failed" }); }
   }));
-  return { started: tasks.length, skipped: false };
+  return { started, skipped: false };
 }

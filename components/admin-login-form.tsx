@@ -8,16 +8,16 @@ import { safeCallbackUrl } from "@/lib/admin-auth/callback-url";
 import { Icon } from "@/components/ui-icons";
 
 export function validateAdminCredentials(login: string, password: string): string | null {
-  return login.trim() && password ? null : "Enter login and password.";
+  return login.trim() && password ? null : "Wpisz login i hasło.";
 }
 
 export function loginErrorMessage(status: number, retryAfterSeconds = 900): string {
-  if (status === 401) return "Invalid login or password.";
+  if (status === 401) return "Nieprawidłowy login lub hasło.";
   if (status === 429) {
     const minutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
-    return `Too many attempts. Try again in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`;
+    return `Zbyt wiele prób. Spróbuj ponownie za ${minutes} min.`;
   }
-  return "Could not sign in. Try again.";
+  return "Nie udało się zalogować. Spróbuj ponownie.";
 }
 
 export default function AdminLoginForm({ callbackUrl }: { callbackUrl?: string }) {
@@ -43,7 +43,7 @@ export default function AdminLoginForm({ callbackUrl }: { callbackUrl?: string }
       router.replace(safeCallbackUrl(callbackUrl));
       router.refresh();
     } catch (caught) {
-      setError(loginErrorMessage(caught instanceof CoreApiError ? caught.status : 500));
+      setError(loginErrorMessage(caught instanceof CoreApiError ? caught.status : 500, caught instanceof CoreApiError ? caught.retryAfterSeconds : undefined));
     } finally {
       setSubmitting(false);
     }
@@ -60,15 +60,15 @@ export default function AdminLoginForm({ callbackUrl }: { callbackUrl?: string }
           onChange={(event) => setLogin(event.target.value)}
           autoComplete="username"
           required
-          placeholder="Administrator login"
+          placeholder="Login administratora"
           className="app-field"
         />
       </div>
       <div className="space-y-1.5">
-        <label htmlFor="password" className="app-label">Password</label>
+        <label htmlFor="password" className="app-label">Hasło</label>
         <div className="relative">
-          <input id="password" name="password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required placeholder="Your password" className="app-field pr-12" />
-          <button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-1 top-1/2 grid min-h-11 min-w-11 -translate-y-1/2 place-items-center rounded-lg text-muted hover:bg-surface-hover hover:text-foreground">
+          <input id="password" name="password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required placeholder="Twoje hasło" className="app-field pr-12" />
+          <button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Ukryj hasło" : "Pokaż hasło"} className="absolute right-1 top-1/2 grid min-h-11 min-w-11 -translate-y-1/2 place-items-center text-muted hover:bg-surface-hover hover:text-foreground">
             <Icon name="eye" size={18} className={showPassword ? "hidden" : "block"} />
             <Icon name="eyeOff" size={18} className={showPassword ? "block" : "hidden"} />
           </button>
@@ -80,7 +80,7 @@ export default function AdminLoginForm({ callbackUrl }: { callbackUrl?: string }
         disabled={submitting}
         className="app-button app-button-primary w-full"
       >
-        {submitting ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />Signing in...</> : <>Sign in<Icon name="arrowRight" size={17} /></>}
+        {submitting ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />Logowanie…</> : <>Zaloguj się<Icon name="arrowRight" size={17} /></>}
       </button>
     </form>
   );

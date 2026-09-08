@@ -11,6 +11,7 @@ const journalJobSchema = baseJobSchema.extend({
 });
 
 const followUpJobSchema = baseJobSchema.extend({
+  r2Key: z.string().min(1).max(512).optional(),
   automationId: z.string().min(1).max(255),
   userId: z.string().min(1).max(255),
   commenterName: z.string().min(1).max(255).optional(),

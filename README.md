@@ -31,6 +31,8 @@
 
 InstaScaler obsługuje najważniejszy przepływ automatyzacji: komentarz zaczyna prywatną rozmowę, właściwa osoba dostaje właściwy link, a każda dostawa pozostaje obserwowalna. Bez stale działającego serwera, Redis ani Hyperdrive — tylko oficjalne API Meta, Cloudflare Workers i serverlessowy Neon.
 
+Panel i strony publiczne są po polsku, wraz z walidacją, szablonami kampanii, etykietami dostępności oraz formatowaniem dat i liczb. Wygląd korzysta z marki DELTA240MVT: Inter, IBM Plex Mono, jasne tło, czerń i turkus z żółtymi oraz fioletowymi akcentami. Fonty z polskimi znakami są serwowane lokalnie; licencje znajdują się w `public/fonts/`.
+
 ## Co robi InstaScaler
 
 | Możliwość | Znaczenie w praktyce |
@@ -113,9 +115,9 @@ Najważniejsze elementy mają osobne role:
 2. **Core sprawdza nadawcę.** Podpis `X-Hub-Signature-256` jest porównywany z HMAC wyliczonym przy użyciu `META_APP_SECRET`. Niepoprawnie podpisane żądanie kończy się kodem `401` i nie trafia dalej.
 3. **Payload jest normalizowany.** Core odrzuca zdarzenia własnego konta i nieobsługiwane wiadomości, a pozostałym nadaje stabilny `externalId`, np. `comment:<id>` lub `message:<mid>`.
 4. **Pełne zdarzenie trafia do R2.** Koperta JSON zawiera rodzaj zdarzenia, konto, czas i potrzebne dane. Klucz obiektu jest deterministyczny i powstaje z daty oraz skrótu `externalId`.
-5. **Core sprawdza konto i dzienny budżet.** Dla znanego, połączonego konta rezerwuje zdarzenie przychodzące w Neon.
+5. **Core sprawdza konto i dzienny budżet.** Dla znanego, połączonego konta zapisuje `ProcessedEvent.RECEIVED` i rezerwuje liczniki w jednej transakcji Neon. Powtórka nie zużywa ponownie budżetu przyjęć; reconciliation i recovery korzystają z tej samej ścieżki.
 6. **Do Queue trafia tylko mała wiadomość.** Zawiera `externalId`, rodzaj zadania, identyfikator konta i `r2Key`. Pełny webhook ani token Meta nie podróżują w Queue.
-7. **Meta szybko dostaje potwierdzenie.** Core odpowiada liczbą zaakceptowanych zdarzeń, a zapis i kolejkowanie kończy w `waitUntil`, poza czasem odpowiedzi HTTP.
+7. **Meta dostaje potwierdzenie po zapisie R2.** Core odpowiada liczbą zapisanych zdarzeń. Przy błędzie dziennika zwraca `503`, aby Meta mogła ponowić webhook. Rezerwacja budżetu i publikowanie do kolejki kończą się w `waitUntil`, poza czasem odpowiedzi HTTP.
 8. **Queue uruchamia Jobs.** Jobs sprawdza format wiadomości, wyszukuje konto w Neon i rezerwuje `ProcessedEvent`. Jeżeli `externalId` ma już stan końcowy, zdarzenie jest pomijane jako duplikat.
 9. **Jobs pobiera pełną kopertę z R2.** Następnie wybiera obsługę `COMMENT`, `POSTBACK` albo `MESSAGE` i szuka aktywnej kampanii pasującej do posta oraz słów kluczowych.
 10. **Przed każdą wysyłką działa limit konta.** `AccountRateLimiter` jako Durable Object serializuje rezerwacje dla danego konta. Brak dostępnego limitu powoduje retry zamiast utraty zdarzenia.
@@ -144,6 +146,18 @@ NOWE → R2 → QUEUE → PROCESSING ─┬─► COMPLETED ─► usuń z R2
 ## Ponawianie i odporność
 
 Queue używa ograniczonego backoffu: 60, 120, 240, 480 i 960 sekund, maksymalnie pięć prób. Gdy dostawa nadal nie może się zakończyć, `RecoverJournalWorkflow` odzyskuje kopertę pozostawioną w R2.
+
+Ręczne odpowiedzi ze skrzynki również wysyła Jobs, przez prywatny binding RPC `JOBS_API` z Core do entrypointu `ManualMessages`. Obowiązuje ten sam limiter konta co przy automatyzacjach. Edycja kampanii zachowuje istniejące slugi śledzonych linków i historię kliknięć.
+
+Opóźnione wiadomości mają trwały zapis pod `follow-ups/` w R2. Odzyskiwanie przegląda ograniczone partie wpisów i zapisuje kursory w `control/`, dzięki czemu duży dziennik nie blokuje początku kolejnych skanów. Ukończona dostawa pozostaje ukończona także po błędzie sprzątania R2.
+
+Tryb następnej publikacji wybiera post lub rolkę opublikowaną po ostatnim zapisie konfiguracji kampanii. Ponowne ustawienie tego trybu w starej kampanii nie przypina wcześniejszego materiału.
+
+Przerwanie procesu pomiędzy zaakceptowaniem wysyłki przez Meta a zapisaniem wyniku w Neon pozostawia wynik niepewny. System nie ponawia ślepo takiej wysyłki: przed ręczną interwencją trzeba porównać wiadomości na Instagramie i stan diagnostyki.
+
+### Testy przeglądarkowe
+
+`npm run build`, a następnie `npm run test:e2e:local` uruchamiają testy polskiego panelu na desktopie i telefonie z kontrolowanymi odpowiedziami API. Testy te sprawdzają interakcje i błędy interfejsu, bez wysyłania wiadomości do prawdziwych użytkowników. `npm run test:e2e` pozostaje osobnym testem działającego środowiska, wymagającym zmiennych `E2E_*`. Wyniki i granice audytu zapisano w `docs/audits/2026-09-08-audit.md`.
 
 ## Szybki start
 

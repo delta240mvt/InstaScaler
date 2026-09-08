@@ -13,6 +13,7 @@ describe("R2 webhook journal", () => {
     const body = '{"object":"instagram"}';
     await expect(verifyMetaSignature(body, await signature("secret", body), "secret")).resolves.toBe(true);
     await expect(verifyMetaSignature(body, "sha256=00", "secret")).resolves.toBe(false);
+    await expect(verifyMetaSignature(body, `${await signature("secret", body)}\n`, "secret")).resolves.toBe(false);
   });
 
   it("writes a deterministic, compact event before Queue delivery", async () => {

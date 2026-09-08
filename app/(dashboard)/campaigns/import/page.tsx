@@ -1,5 +1,7 @@
 "use client";
 
+import { coreFetch } from "@/lib/core-api/client";
+
 /**
  * Import Campaigns Page
  *
@@ -15,8 +17,8 @@ import { parseCsv } from "@/lib/utils/csv";
 import { IMPORT_QUEUE_KEY, IMPORT_ACCOUNT_KEY } from "@/lib/import-queue";
 
 const SAMPLE = `keywords,dm_message,public_reply,tracked_url,opening_dm,opening_dm_button
-"yc","here it is: {link}","sent. check dms","https://events.ycombinator.com/startup-school-2026","hey! click below for the referral","send link"
-"LINK,SHOP","grab it here: {link}","dmed u",,,`;
+"PORADNIK","Oto Twój poradnik: {link}","Sprawdź wiadomości prywatne","https://example.com/poradnik","Cześć! Naciśnij przycisk, aby otrzymać poradnik","Wyślij link"
+"LINK,SKLEP","Znajdziesz to tutaj: {link}","Wiadomość już czeka",,,`;
 
 export default function ImportCampaignsPage() {
   const router = useRouter();
@@ -26,10 +28,10 @@ export default function ImportCampaignsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/dashboard/stats")
+    coreFetch("/api/dashboard/stats")
       .then((res) => res.json())
       .then((payload) => {
-        if (payload.success) {
+        if ((payload.data !== undefined)) {
           const next = payload.data.instagramAccounts ?? [];
           setAccounts(next);
           setSelectedAccountId(next[0]?.id ?? "");
@@ -42,7 +44,7 @@ export default function ImportCampaignsPage() {
     setError(null);
     const parsed = parseCsv(csv);
     if (parsed.length === 0) {
-      setError("Paste a CSV with a header row and at least one campaign.");
+      setError("Wklej CSV z nagłówkiem i co najmniej jedną kampanią.");
       return;
     }
 
@@ -56,7 +58,7 @@ export default function ImportCampaignsPage() {
         .slice(0, 10);
       const dmMessage = (r.dm_message ?? r.message ?? "").trim();
       if (keywords.length === 0 || !dmMessage) {
-        setError(`Row ${i + 1} is missing keywords or a message.`);
+        setError(`W wierszu ${i + 1} brakuje słów kluczowych lub wiadomości.`);
         return;
       }
       rows.push({
@@ -76,7 +78,7 @@ export default function ImportCampaignsPage() {
         window.localStorage.setItem(IMPORT_ACCOUNT_KEY, selectedAccountId);
       }
     } catch {
-      setError("Could not stage the import in this browser.");
+      setError("Nie udało się przygotować importu w tej przeglądarce.");
       return;
     }
     router.push("/campaigns/new");
@@ -85,22 +87,19 @@ export default function ImportCampaignsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-7">
       <header>
-        <p className="app-kicker">Bulk setup</p>
-        <h1 className="app-page-title mt-2">Import campaigns</h1>
+        <p className="app-kicker">Import zbiorczy</p>
+        <h1 className="app-page-title mt-2">Import kampanii</h1>
         <p className="app-page-description mt-2">
-          Paste a CSV with one row per campaign. Each row opens in the builder
-          prefilled and editable, so you can review it and pick the reel before
-          saving. Required columns are{" "}
-          <code className="text-accent">keywords</code> and{" "}
-          <code className="text-accent">dm_message</code>. Optional:{" "}
+
+          Wklej CSV z jedną kampanią w każdym wierszu. Wiersze otworzą się kolejno w edytorze, aby można było sprawdzić treść i wybrać rolkę przed zapisem. Wymagane kolumny:{" "}
+          <code className="text-accent">keywords</code>  oraz{" "}
+          <code className="text-accent">dm_message</code>. Opcjonalne:{" "}
           <code className="text-accent">name</code>,{" "}
           <code className="text-accent">public_reply</code>,{" "}
           <code className="text-accent">tracked_url</code>,{" "}
           <code className="text-accent">opening_dm</code>,{" "}
-          <code className="text-accent">opening_dm_button</code>. Keywords go in
-          one cell, separated by commas. Use{" "}
-          <code className="text-accent">{"{link}"}</code> in the message to
-          insert the tracked link.
+          <code className="text-accent">opening_dm_button</code>. Słowa kluczowe wpisz w jednej komórce, oddzielając je przecinkami. Użyj{" "}
+          <code className="text-accent">{"{link}"}</code>  w wiadomości, aby wstawić śledzony link.
         </p>
       </header>
 
@@ -113,20 +112,21 @@ export default function ImportCampaignsPage() {
       {accounts.length > 1 && (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-foreground">
-            Instagram account
+
+            Konto Instagram
           </label>
           <AccountSelect
             accounts={accounts}
             value={selectedAccountId}
             onChange={setSelectedAccountId}
             includeAll={false}
-            label="Account"
+            label="Konto"
           />
         </div>
       )}
 
       <section className="app-card space-y-3 p-5 sm:p-6">
-        <label className="app-label" htmlFor="campaign-csv">Campaign CSV</label>
+        <label className="app-label" htmlFor="campaign-csv">Kampanie w formacie CSV</label>
         <textarea
           value={csv}
           onChange={(e) => setCsv(e.target.value)}
@@ -140,7 +140,8 @@ export default function ImportCampaignsPage() {
           onClick={() => setCsv(SAMPLE)}
           className="text-xs text-muted hover:text-foreground"
         >
-          Fill with a sample
+
+          Wstaw przykład
         </button>
       </section>
 
@@ -149,13 +150,15 @@ export default function ImportCampaignsPage() {
           onClick={startImport}
           className="app-button app-button-primary w-full sm:w-auto"
         >
-          Review and import
+
+          Sprawdź i importuj
         </button>
         <button
           onClick={() => router.push("/campaigns")}
           className="app-button app-button-secondary w-full sm:w-auto"
         >
-          Cancel
+
+          Anuluj
         </button>
       </div>
     </div>

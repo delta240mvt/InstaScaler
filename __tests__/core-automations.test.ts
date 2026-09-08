@@ -36,7 +36,7 @@ describe("single-owner automation service", () => {
 
   it("accepts partial patches used by campaign toggles", async () => {
     const update = vi.fn(async ({ data }: { data: unknown }) => data);
-    await updateAutomation({ automation: { update } }, "automation", { isActive: false });
+    await updateAutomation({ automation: { findUnique: async () => normalizeAutomationInput({ name: "A", dmMessage: "Hi", instagramAccountId: "ig", keywords: ["go"], postId: "post" }), update } }, "automation", { isActive: false });
     expect(update).toHaveBeenCalledWith({ where: { id: "automation" }, data: { isActive: false } });
   });
 
@@ -68,7 +68,7 @@ describe("single-owner automation service", () => {
 
   it("skips imported rows for posts that already have a campaign", async () => {
     const create = vi.fn(async ({ data }: { data: unknown }) => data);
-    const db = { automation: { findMany: async () => [{ postId: "used" }], create } };
+    const db = { automation: { findMany: async () => [{ instagramAccountId: "ig", postId: "used" }], create } };
     const result = await importAutomations(db, [
       { name: "Used", dmMessage: "Hi", instagramAccountId: "ig", keywords: ["go"], postId: "used" },
       { name: "New", dmMessage: "Hi", instagramAccountId: "ig", keywords: ["go"], postId: "new" },

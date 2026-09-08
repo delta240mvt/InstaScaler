@@ -1,55 +1,13 @@
 import type { Metadata } from "next";
 import LegalShell from "@/components/legal-shell";
 
-export const metadata: Metadata = {
-  title: "Terms of Service - InstaScaler",
-  description:
-    "Terms for using InstaScaler's Instagram comment-to-DM campaign software.",
-};
+export const metadata: Metadata = { title: "Regulamin — InstaScaler", description: "Zasady korzystania z InstaScaler — aplikacji do kampanii komentarz → wiadomość na Instagramie." };
 
 export default function TermsPage() {
-  return (
-    <LegalShell
-      title="Terms of Service"
-      description="These terms define acceptable use for InstaScaler's hosted Instagram comment-to-DM campaign service."
-      updatedAt="May 24, 2026"
-    >
-      <section>
-        <h2 className="text-xl font-bold text-white">Authorized Use</h2>
-        <p className="mt-3">
-          You may use InstaScaler only with Instagram professional accounts you
-          own or are authorized to manage. You are responsible for the campaigns,
-          keywords, links, and messages you configure.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-white">Platform Compliance</h2>
-        <p className="mt-3">
-          You agree to follow Meta Platform Terms, Instagram policies, applicable
-          messaging rules, privacy laws, advertising rules, and anti-spam laws.
-          InstaScaler may rate-limit, pause, or disable campaigns that create
-          compliance, abuse, security, or deliverability risk.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-white">Availability</h2>
-        <p className="mt-3">
-          InstaScaler depends on third-party platforms including Meta, email,
-          hosting, database, and queue providers. We work to operate the
-          service reliably, but uninterrupted availability is not guaranteed.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-white">Open-Source Core</h2>
-        <p className="mt-3">
-          The public repository is MIT licensed. Hosted SaaS infrastructure,
-          managed support, agency workflows, analytics, reports, and other paid
-          service features may be provided separately from the open-source core.
-        </p>
-      </section>
-    </LegalShell>
-  );
+  return <LegalShell title="Regulamin" description="Zasady korzystania z InstaScaler — aplikacji do kampanii komentarz → wiadomość na Instagramie." updatedAt="8 września 2026">
+    <section><h2 className="text-xl font-bold text-foreground">Uprawnione korzystanie</h2><p className="mt-3">Z InstaScaler można korzystać wyłącznie w odniesieniu do profesjonalnych kont Instagram, których jesteś właścicielem lub którymi możesz zarządzać. Odpowiadasz za skonfigurowane kampanie, słowa kluczowe, linki i treść wiadomości.</p></section>
+    <section><h2 className="text-xl font-bold text-foreground">Zasady platformy</h2><p className="mt-3">Korzystając z aplikacji, przestrzegaj warunków Meta, zasad Instagrama, obowiązujących reguł wysyłania wiadomości oraz przepisów dotyczących prywatności, reklamy i spamu. Aplikacja może ograniczać wysyłkę lub wstrzymywać kampanie w przypadku problemów z uprawnieniami, bezpieczeństwem albo dostarczaniem.</p></section>
+    <section><h2 className="text-xl font-bold text-foreground">Dostępność</h2><p className="mt-3">Działanie aplikacji zależy od Meta, Cloudflare i Neon. Ciągła dostępność nie jest gwarantowana. Limity lub awarie dostawców mogą opóźniać przetwarzanie zdarzeń i wysyłanie wiadomości.</p></section>
+    <section><h2 className="text-xl font-bold text-foreground">Licencja</h2><p className="mt-3">Publiczne repozytorium InstaScaler jest udostępniane na licencji MIT. Aplikację wdrażasz we własnym środowisku i zarządzasz jej konfiguracją oraz połączonymi kontami.</p></section>
+  </LegalShell>;
 }

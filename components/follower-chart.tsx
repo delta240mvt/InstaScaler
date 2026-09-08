@@ -31,18 +31,16 @@ export interface FollowerChartPoint {
 
 // Colors read against the light chart surface (#ffffff): the accent line clears
 // 3:1 contrast and grid/axis text match the muted/border tokens. See globals.css.
-const SERIES_COLOR = "#c98519";
-const GRID_COLOR = "#e4e7ef";
-const AXIS_TEXT = "#687286";
+const SERIES_COLOR = "var(--foreground)";
+const GRID_COLOR = "var(--border)";
+const AXIS_TEXT = "var(--muted)";
 
 function formatCompact(n: number): string {
-  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
+  return new Intl.NumberFormat("pl-PL", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 }
 
 function formatDay(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString(undefined, {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("pl-PL", {
     month: "short",
     day: "numeric",
     timeZone: "UTC",
@@ -50,7 +48,7 @@ function formatDay(iso: string): string {
 }
 
 function formatSigned(n: number): string {
-  return `${n > 0 ? "+" : ""}${n.toLocaleString()}`;
+  return `${n > 0 ? "+" : ""}${n.toLocaleString("pl-PL")}`;
 }
 
 function ChartTooltip({
@@ -67,11 +65,11 @@ function ChartTooltip({
     <div className="rounded border border-border bg-surface px-3 py-2 text-xs shadow-lg">
       <p className="text-muted">{formatDay(point.date)}</p>
       <p className="mt-1 font-semibold text-foreground">
-        {point.followers.toLocaleString()} followers
+        {point.followers.toLocaleString("pl-PL")}  obserwujących
       </p>
       {point.delta !== null && point.delta !== 0 && (
         <p className={point.delta > 0 ? "text-success" : "text-error"}>
-          {formatSigned(point.delta)} that day
+          {formatSigned(point.delta)}  tego dnia
         </p>
       )}
     </div>
@@ -99,19 +97,21 @@ export default function FollowerChart({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-foreground">
-            Followers over time
+
+            Historia liczby obserwujących
           </h2>
           <p className="mt-1 text-sm text-muted">
             {current === null
-              ? "Follower count unavailable"
-              : `${current.toLocaleString()} now`}
+              ? "Liczba obserwujących jest niedostępna"
+              : `${current.toLocaleString("pl-PL")} obecnie`}
             {net !== null && (
               <>
                 {" · "}
                 <span className={net >= 0 ? "text-success" : "text-error"}>
                   {formatSigned(net)}
                 </span>{" "}
-                over {data.length} days
+
+                w ciągu {data.length}  dni
               </>
             )}
           </p>
@@ -122,20 +122,20 @@ export default function FollowerChart({
             onClick={() => setShowTable((v) => !v)}
             className="app-button app-button-secondary min-h-10 px-3 text-xs"
           >
-            {showTable ? "Show chart" : "Show table"}
+            {showTable ? "Pokaż wykres" : "Pokaż tabelę"}
           </button>
         )}
       </div>
 
       {data.length < 2 ? (
         <div className="mt-6 rounded-2xl border border-border bg-surface-subtle p-6 text-center">
-          <p className="text-sm text-foreground">Collecting follower history</p>
+          <p className="text-sm text-foreground">Zbieranie historii obserwujących</p>
           <p className="mt-1 text-sm text-muted">
             {data.length === 0
-              ? "No snapshots recorded yet."
-              : "One day recorded so far."}{" "}
-            A point is added daily — the chart appears once there are at least
-            two.
+              ? "Nie zapisano jeszcze żadnych pomiarów."
+              : "Zapisano pomiar z jednego dnia."}{" "}
+
+            Pomiar jest dodawany codziennie. Wykres pojawi się po zapisaniu co najmniej dwóch pomiarów.
           </p>
         </div>
       ) : showTable ? (
@@ -143,9 +143,9 @@ export default function FollowerChart({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-zinc-500">
-                <th className="py-2 pr-4 font-medium">Date</th>
-                <th className="py-2 px-3 font-medium text-right">Followers</th>
-                <th className="py-2 pl-3 font-medium text-right">Change</th>
+                <th className="py-2 pr-4 font-medium">Data</th>
+                <th className="py-2 px-3 font-medium text-right">Obserwujący</th>
+                <th className="py-2 pl-3 font-medium text-right">Zmiana</th>
               </tr>
             </thead>
             <tbody>
@@ -155,7 +155,7 @@ export default function FollowerChart({
                     {formatDay(p.date)}
                   </td>
                   <td className="py-2 px-3 text-right text-muted">
-                    {p.followers.toLocaleString()}
+                    {p.followers.toLocaleString("pl-PL")}
                   </td>
                   <td className="py-2 pl-3 text-right text-muted">
                     {p.delta === null ? "—" : formatSigned(p.delta)}
@@ -205,7 +205,7 @@ export default function FollowerChart({
                 stroke={SERIES_COLOR}
                 strokeWidth={2}
                 dot={false}
-                activeDot={{ r: 4, fill: SERIES_COLOR, stroke: "#ffffff", strokeWidth: 2 }}
+                activeDot={{ r: 4, fill: SERIES_COLOR, stroke: "var(--surface)", strokeWidth: 2 }}
                 isAnimationActive={false}
               />
             </LineChart>

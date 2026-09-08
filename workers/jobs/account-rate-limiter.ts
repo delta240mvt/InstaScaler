@@ -35,7 +35,7 @@ export class AccountRateLimiter extends DurableObject<unknown> {
 
   alarm(): Promise<void> {
     return this.state.blockConcurrencyWhile(async () => {
-      this.state.storage.sql.exec("DELETE FROM capacity");
+      this.state.storage.sql.exec("DELETE FROM capacity WHERE hour < ?", new Date().toISOString().slice(0, 13));
     });
   }
 }

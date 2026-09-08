@@ -1,7 +1,8 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { connectInstagramAccount, disconnectInstagramAccount, listInstagramAccounts, type AccountConnectionDb, type AccountDb } from "@/lib/core/instagram-accounts";
 import type { CoreEnv } from "@/lib/cloudflare/env";
-import { exchangeInstagramCode, exchangeLongLivedToken, getInstagramProfile, getInstagramResource, sendInstagramMessage, subscribeInstagramWebhooks } from "@/lib/core/meta-client";
+import { exchangeInstagramCode, exchangeLongLivedToken, getInstagramProfile, getInstagramResource, subscribeInstagramWebhooks } from "@/lib/core/meta-client";
 import { buildAuthorizationUrl, createOAuthState, decryptToken, encryptToken, verifyOAuthState } from "@/lib/core/meta-oauth";
 import { requireAdmin } from "@/workers/core/middleware/auth";
 import { serializeFollowerHistory } from "@/lib/core/follower-history";
@@ -62,8 +63,8 @@ export function instagramRoutes(getDb: (env: CoreEnv) => InstagramDb) {
   app.get("/instagram/follower-history", async (context) => {
     const account = await selectedAccount(getDb(context.env), context.req.query("instagramAccountId")) as { id: string } | null;
     if (!account) return context.json({ error: "account_not_found" }, 404);
-    const rows = await getDb(context.env).followerSnapshot.findMany({ where: { instagramAccountId: account.id }, orderBy: { date: "asc" }, take: 365 });
-    return context.json({ data: serializeFollowerHistory(rows) });
+    const rows = await getDb(context.env).followerSnapshot.findMany({ where: { instagramAccountId: account.id }, orderBy: { date: "desc" }, take: 365 });
+    return context.json({ data: serializeFollowerHistory(rows.reverse()) });
   });
   app.get("/instagram/posts", async (context) => {
     const account = await selectedAccount(getDb(context.env), context.req.query("instagramAccountId")) as { instagramId: string; accessToken: string } | null;
@@ -96,11 +97,13 @@ export function instagramRoutes(getDb: (env: CoreEnv) => InstagramDb) {
     return context.json({ data: { messages } });
   });
   app.post("/instagram/conversations", async (context) => {
-    const body = await context.req.json<{ instagramAccountId?: string; recipientId?: string; text?: string }>().catch(() => ({})) as { instagramAccountId?: string; recipientId?: string; text?: string };
-    if (!body.recipientId || !body.text?.trim()) return context.json({ error: "invalid_message" }, 400);
-    const account = await selectedAccount(getDb(context.env), body.instagramAccountId) as { instagramId: string; accessToken: string } | null;
+    const parsed = z.object({ instagramAccountId: z.string().min(1).max(255).optional(), recipientId: z.string().regex(/^\d+$/).max(100), text: z.string().trim().min(1).max(1000) }).safeParse(await context.req.json().catch(() => null));
+    if (!parsed.success) return context.json({ error: "invalid_message" }, 400);
+    const body = parsed.data;
+    const account = await selectedAccount(getDb(context.env), body.instagramAccountId) as { id: string } | null;
     if (!account) return context.json({ error: "account_not_found" }, 404);
-    return context.json({ data: await sendInstagramMessage(account.instagramId, await decryptToken(account.accessToken, context.env.ENCRYPTION_KEY), body.recipientId, body.text.trim()) });
+    const result = await context.env.JOBS_API.sendManualMessage({ instagramAccountId: account.id, recipientId: body.recipientId, text: body.text });
+    return result.ok ? context.json({ data: result.data }) : context.json({ error: result.error }, result.status);
   });
   return app;
 }

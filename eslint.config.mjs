@@ -11,6 +11,10 @@ const eslintConfig = defineConfig([
     // Default ignores of eslint-config-next:
     ".next/**",
     ".open-next/**",
+    ".open-next-stale-*/**",
+    ".firecrawl/**",
+    "test-results/**",
+    "playwright-report/**",
     ".wrangler/**",
     "dist/**",
     "dist-*/**",

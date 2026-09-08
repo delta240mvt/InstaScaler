@@ -45,7 +45,7 @@ describe("responsive shell and login", () => {
     const sidebar = source("components/sidebar.tsx");
     expect(sidebar).toContain('role={isOpen ? "dialog" : undefined}');
     expect(sidebar).toContain("aria-modal={isOpen ? true : undefined}");
-    expect(sidebar).toContain('aria-label="Close navigation"');
+    expect(sidebar).toContain('aria-label="Zamknij nawigację"');
     expect(sidebar).toContain("min-h-11");
   });
 
@@ -59,12 +59,12 @@ describe("responsive shell and login", () => {
   it("gives login a premium private-workspace treatment and password visibility", () => {
     const page = source("app/login/page.tsx");
     const form = source("components/admin-login-form.tsx");
-    expect(page).toContain("Your growth workspace");
+    expect(page).toContain("Dobrze Cię");
     expect(page).toContain("InstaScaler");
     expect(page).toContain("InstaScaler");
     expect(page).toContain("editorial-canvas");
     expect(page).toContain("lg:grid-cols-2");
-    expect(form).toContain('aria-label={showPassword ? "Hide password" : "Show password"}');
+    expect(form).toContain('aria-label={showPassword ? "Ukryj hasło" : "Pokaż hasło"}');
     expect(form).toContain('name="eye"');
   });
 });
@@ -73,7 +73,7 @@ describe("analytics hierarchy", () => {
   it("gives the dashboard a semantic heading and primary campaign action", () => {
     const dashboard = source("app/(dashboard)/dashboard/page.tsx");
     expect(dashboard).toContain("app-page-title");
-    expect(dashboard).toContain("Create campaign");
+    expect(dashboard).toContain("Utwórz kampanię");
     expect(dashboard).toContain('name="plus"');
   });
 
@@ -86,7 +86,7 @@ describe("analytics hierarchy", () => {
   it("brands public reports without private navigation", () => {
     const report = source("app/reports/[shareSlug]/page.tsx");
     expect(report).toContain("InstaScaler");
-    expect(report).toContain("Public campaign report");
+    expect(report).toContain("Publiczny raport kampanii");
     expect(report).toContain("app-page-title");
   });
 });
@@ -115,8 +115,8 @@ describe("campaign workflow UIX", () => {
 describe("mobile inbox and activity", () => {
   it("uses a one-pane phone inbox with an accessible back action and sticky composer", () => {
     const inbox = source("app/(dashboard)/inbox/page.tsx");
-    expect(inbox).toContain('aria-label="Back to conversations"');
-    expect(inbox).toContain('aria-label="Conversation thread"');
+    expect(inbox).toContain('aria-label="Wróć do rozmów"');
+    expect(inbox).toContain('aria-label="Treść rozmowy"');
     expect(inbox).toContain("sticky bottom-0");
     expect(inbox).toContain('active ? "hidden" : "flex"');
   });
@@ -134,7 +134,7 @@ describe("operational and public surfaces", () => {
     const settings = source("app/(dashboard)/settings/page.tsx");
     expect(settings).toContain("app-page-title");
     expect(settings).toContain("app-button-danger");
-    expect(settings).toContain("Connect up to five");
+    expect(settings).toContain("Możesz połączyć maksymalnie pięć");
   });
 
   it("makes free-plan budgets and replay operations scannable", () => {

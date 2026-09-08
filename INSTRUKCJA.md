@@ -46,6 +46,8 @@ npx wrangler queues create instascaler-events-dlq
 
 Pliki `wrangler.web.jsonc`, `wrangler.core.jsonc` i `wrangler.jobs.jsonc` definiują Workery, bindingi R2/Queue, Durable Objects i Workflows. Nie zmieniaj ich nazw, jeśli tworzysz zasoby z poleceń powyżej.
 
+Core korzysta z bindingu usługowego `JOBS_API`, który wskazuje na `instascaler-jobs`, entrypoint `ManualMessages`. Dzięki niemu ręczne wiadomości ze skrzynki są wysyłane przez Jobs z limitem konta. Binding nie wymaga nowego sekretu ani publicznego endpointu. Wdrażaj Jobs przed Core, aby entrypoint był dostępny.
+
 ## 5. Sekrety
 
 Wartości wpisuj interaktywnie — nie podawaj ich w linii polecenia. Core wymaga: `DATABASE_URL`, `APP_BASE_URL`, `ADMIN_LOGIN`, `ADMIN_PASSWORD_PEPPER`, `ADMIN_PASSWORD_VERIFIER`, `SESSION_SIGNING_KEY`, `ENCRYPTION_KEY`, `OAUTH_STATE_KEY`, `IP_HASH_SALT`, `META_APP_ID`, `META_APP_SECRET`, `META_REDIRECT_URI`, `META_WEBHOOK_VERIFY_TOKEN`. Jobs wymaga: `DATABASE_URL`, `APP_BASE_URL`, `ENCRYPTION_KEY`, `SCHEDULER_BOOTSTRAP_TOKEN`.
@@ -79,12 +81,16 @@ curl.exe -X POST https://YOUR-INSTASCALER-JOBS.example/internal/bootstrap -H "Au
 
 ## 7. Meta i Instagram
 
+Aktualizacja nie wymaga nowej migracji bazy ani dodatkowego zasobu Cloudflare. Dziennik R2 zawiera teraz także `follow-ups/` z opóźnionymi zadaniami i `control/` z kursorami odzyskiwania. Zachowaj te obiekty; usuwanie ich poza mechanizmem retencji może przerwać odzyskiwanie. Przyjęcie zdarzenia i dzienne liczniki są zapisywane atomowo w istniejącym Neon.
+
 1. W Meta for Developers utwórz aplikację i dodaj Instagram Login oraz Webhooks.
 2. Wpisz App ID i App Secret jako `META_APP_ID` oraz `META_APP_SECRET` w sekretach Core.
 3. Dodaj dokładny OAuth redirect: `https://YOUR-INSTASCALER-DOMAIN.example/api/instagram/callback`.
 4. Ustaw callback webhooka: `https://YOUR-INSTASCALER-CORE.example/webhook`; jako verify token użyj wartości `META_WEBHOOK_VERIFY_TOKEN`.
-5. Zasubskrybuj `comments` i `messages`. W trybie Development dodaj swoje konto Facebook/Instagram jako testera. Produkcja wymaga spełnienia bieżących wymagań i review Meta.
-6. Zaloguj się do dashboardu, otwórz Settings i wybierz **Connect Instagram**.
+5. Zasubskrybuj `comments`, `messages` i `messaging_postbacks`. Ostatnie pole jest potrzebne do obsługi przycisków wiadomości otwierającej i potwierdzenia obserwowania. W trybie Development dodaj swoje konto Facebook/Instagram jako testera. Produkcja wymaga spełnienia bieżących wymagań i review Meta.
+6. Zaloguj się do panelu, otwórz **Ustawienia** i wybierz **Połącz Instagram**. Po aktualizacji istniejącej instalacji połącz konto ponownie, aby odświeżyć subskrypcję webhooków.
+
+Wymagania zdarzeń wiadomości i przycisków opisuje [oficjalna kolekcja Instagram API Meta](https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api?entity=request-23987686-af579d08-121e-4897-8f45-5fd41ace49df).
 
 ## 8. Test końcowy i diagnostyka
 
@@ -96,7 +102,16 @@ ggshield secret scan repo .
 git status --short
 ```
 
-Z innego konta dodaj komentarz pasujący do aktywnej kampanii. Sprawdź DM, link, follow-gate i logi. Gdy OAuth zwraca błąd, porównaj znak po znaku redirect URL z Meta. Gdy webhook nie przechodzi weryfikacji, sprawdź callback i `META_WEBHOOK_VERIFY_TOKEN`. Brak `comments` lub `messages` zatrzymuje odpowiedni trigger. Brak DMa po zaakceptowanym webhooku zwykle oznacza brak sekretu Jobs albo pominięty bootstrap. Po świeżym klonie zainstaluj lokalny hook GitGuardian: `ggshield install --mode local`.
+Z innego konta dodaj komentarz pasujący do aktywnej kampanii. Sprawdź wiadomość otwierającą, przycisk, wymaganie obserwowania, dostarczenie linku, wiadomość opóźnioną i logi. Gdy OAuth zwraca błąd, porównaj znak po znaku redirect URL z Meta. Gdy webhook nie przechodzi weryfikacji, sprawdź callback i `META_WEBHOOK_VERIFY_TOKEN`. Brak `comments`, `messages` lub `messaging_postbacks` zatrzymuje odpowiedni przepływ. Po świeżym klonie zainstaluj lokalny hook GitGuardian: `ggshield install --mode local`.
+
+Lokalne testy interfejsu uruchom osobno:
+
+```powershell
+npm run build
+npm run test:e2e:local
+```
+
+Przeglądarka Chromium musi być zainstalowana dla Playwright (`npx playwright install chromium`). Testy uruchamiają gotowy build na `127.0.0.1:3137` i przechwytują zapytania API, używając wyłącznie danych testowych. Nie wymagają produkcyjnego loginu ani tokenu Meta. To test interfejsu; rzeczywiste dostarczanie wymaga osobnego scenariusza z kontem testowym Meta.
 
 ## 9. Publikacja open source
 

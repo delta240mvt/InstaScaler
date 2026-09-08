@@ -4,6 +4,23 @@ import { CoreApiError } from "@/lib/core-api/errors";
 type Options = { baseUrl: string; cookie?: string; fetch?: typeof fetch };
 type Query = Record<string, string | number | boolean | null | undefined>;
 
+async function checkedResponse(response: Response): Promise<Response> {
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({})) as { error?: string; requestId?: string };
+    const retryAfter = Number(response.headers.get("retry-after"));
+    throw new CoreApiError(response.status, payload.error ?? "http_error", payload.requestId, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined);
+  }
+  return response;
+}
+
+/** Checked fetch for existing browser read models using the Core { data } envelope. */
+export async function coreFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return checkedResponse(await fetch(input, init).catch((error) => {
+    if (init?.signal?.aborted) throw error;
+    throw new CoreApiError(0, "service_unavailable");
+  }));
+}
+
 export function createCoreApi(options: Options) {
   const requestFetch = options.fetch ?? fetch;
   async function request<T>(path: string, init: RequestInit & { query?: Query } = {}): Promise<T> {
@@ -14,7 +31,10 @@ export function createCoreApi(options: Options) {
     const headers = new Headers(init.headers);
     if (options.cookie) headers.set("cookie", options.cookie);
     if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
-    const response = await requestFetch(url, { ...init, query: undefined, headers, credentials: "same-origin" } as RequestInit);
+    const response = await checkedResponse(await requestFetch(url, { ...init, query: undefined, headers, credentials: "same-origin" } as RequestInit).catch((error) => {
+      if (init.signal?.aborted) throw error;
+      throw new CoreApiError(0, "service_unavailable");
+    }));
     if (response.status === 204) return undefined as T;
     const payload = await response.json().catch(() => ({})) as { error?: string; requestId?: string };
     if (!response.ok) throw new CoreApiError(response.status, payload.error ?? "http_error", payload.requestId);

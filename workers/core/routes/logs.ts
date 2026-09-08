@@ -12,6 +12,7 @@ export function logRoutes(getDb: (env: CoreEnv) => LogDb) {
     const page = normalizePagination({ page: context.req.query("page"), pageSize: context.req.query("pageSize") ?? context.req.query("limit") });
     const instagramAccountId = context.req.query("instagramAccountId");
     const status = context.req.query("status");
+    if (status && !["ALL", "QUEUED", "PROCESSING", "SENT", "SKIPPED", "RETRYING", "FAILED"].includes(status)) return context.json({ error: "invalid_input" }, 400);
     const where = { ...(instagramAccountId && instagramAccountId !== "all" ? { instagramAccountId } : {}), ...(status && status !== "ALL" ? { status } : {}) };
     const db = getDb(context.env);
     const [items, total] = await Promise.all([
