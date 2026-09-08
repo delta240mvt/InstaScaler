@@ -101,7 +101,7 @@ Supported inbound kinds are `COMMENT`, `POSTBACK`, and `MESSAGE`. `FOLLOW_UP` is
 - Store production values with `wrangler secret put`; keep local values only in ignored environment files.
 - Keep Meta tokens encrypted with `ENCRYPTION_KEY` at rest.
 - Keep admin passwords out of storage; use the generated pepper/verifier pair.
-- Before a public push, run `ggshield secret scan repo .` and inspect staged files.
+- Before a public push, scan only the latest commit with `ggshield secret scan commit-range "HEAD^!"` and inspect the changes being published. Do not scan the full Git history unless the user explicitly requests it.
 - Do not weaken signature verification, session signing, origin checks, login throttling, rate limiting, or idempotency to make a test pass.
 
 ## Tests
@@ -137,7 +137,7 @@ Before finishing:
 - Inspect `git diff` and keep unrelated user changes untouched.
 - Confirm no generated build output, logs, `.env`, `.firecrawl`, or `.open-next-stale-*` files are staged.
 - Update README for user-visible behavior and `INSTRUKCJA.md` for setup/deployment changes.
-- Run GitGuardian before committing.
+- Before committing, run `ggshield secret scan pre-commit` on staged changes only (the local pre-commit hook does this). Before pushing, scan only `HEAD` as described above.
 - Use a focused conventional commit message.
 - Push only when the user explicitly asks.
 

@@ -256,7 +256,7 @@ Repozytorium zawiera szczegółowe zasady implementacji dla Codexa i Claude Code
 
 ## Postawa bezpieczeństwa
 
-Podpisy Meta są weryfikowane, tokeny są szyfrowane w spoczynku, Queue nie przenosi pełnych tokenów, a sekrety należą wyłącznie do Cloudflare Secrets i lokalnego `.env`. Przed publikacją uruchom `ggshield secret scan repo .`.
+Podpisy Meta są weryfikowane, tokeny są szyfrowane w spoczynku, Queue nie przenosi pełnych tokenów, a sekrety należą wyłącznie do Cloudflare Secrets i lokalnego `.env`. Przed pushem skanuj tylko ostatni commit: `ggshield secret scan commit-range "HEAD^!"`. Hook pre-commit sprawdza wyłącznie zmiany przygotowane do commita. Pełną historię skanuj tylko na wyraźne żądanie użytkownika.
 
 ## Roadmap
 

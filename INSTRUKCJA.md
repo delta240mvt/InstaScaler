@@ -98,7 +98,7 @@ Wymagania zdarzeń wiadomości i przycisków opisuje [oficjalna kolekcja Instagr
 npm test
 npm run typecheck
 npm run lint
-ggshield secret scan repo .
+ggshield secret scan commit-range "HEAD^!"
 git status --short
 ```
 
@@ -115,4 +115,4 @@ Przeglądarka Chromium musi być zainstalowana dla Playwright (`npx playwright i
 
 ## 9. Publikacja open source
 
-Przed publicznym push: usuń lokalne domeny i dane kont, sprawdź `git status`, uruchom pełny skan GitGuardian i nie commituj `.env`. Lokalny hook można pominąć przez `--no-verify`, dlatego skan historii jest obowiązkową kontrolą wydania.
+Przed publicznym push: usuń lokalne domeny i dane kont, sprawdź `git status`, przeskanuj tylko ostatni commit poleceniem `ggshield secret scan commit-range "HEAD^!"` i nie commituj `.env`. Hook pre-commit sprawdza wyłącznie zmiany przygotowane do commita; skan przed pushem obejmuje tylko `HEAD`, bez wcześniejszych commitów. Pełną historię skanuj tylko na wyraźne żądanie użytkownika.
