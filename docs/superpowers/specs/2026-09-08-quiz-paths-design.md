@@ -1,10 +1,10 @@
 # Ścieżki: quiz komentarz → DM i baza leadów
 
-Data: 2026-09-08. Status: specyfikacja do przeglądu użytkownika, przed planem implementacji.
+Data: 2026-09-08. Status: zatwierdzona przez użytkownika 2026-09-08 („jest ok”); podstawa planu implementacji.
 
 ## 1. Cel i uzgodniony zakres
 
-Osobny moduł administracyjny „Ścieżki” pozwala właścicielowi InstaScalera budować długie, rozgałęzione rozmowy na Instagramie. Odbiorca wybiera potrzeby, otrzymuje dopasowane wyjaśnienia, narzędzia i darmowe materiały, a aplikacja zapisuje jego odpowiedzi i zainteresowania we własnej bazie.
+Osobny moduł administracyjny „Ścieżki” pozwala właścicielowi InstaScalera budować rozgałęzione rozmowy na Instagramie, maksymalnie po 10 kroków na całą automatyzację, łącznie ze Startem i Zakończeniem. Jest to uproszczenie zlecone przez użytkownika 2026-09-08 po zatwierdzeniu pierwotnego projektu. Odbiorca wybiera potrzeby, otrzymuje dopasowane wyjaśnienia, narzędzia i darmowe materiały, a aplikacja zapisuje jego odpowiedzi i zainteresowania we własnej bazie.
 
 Pierwsze wejście: komentarz START pod wybranym postem → prywatna wiadomość z przyciskiem „Zaczynamy” → kliknięcie odbiorcy → quiz. Admin może zmienić treść wiadomości, CTA, słowo wyzwalające i zakres postów. Sam komentarz nie uruchamia serii kolejnych DM bez interakcji odbiorcy.
 
@@ -50,7 +50,7 @@ Typy kroków:
 5. **Zapis danych:** dodanie/usunięcie tagu, ustawienie pola lub oznaczenie zainteresowania pomocą/ofertą.
 6. **Zakończenie:** zakończenie rozmowy albo przekazanie jej administratorowi. Przekazanie zatrzymuje automatyczne kroki tego przebiegu.
 
-Edytor obsługuje przesuwanie i przybliżanie planszy, wyszukiwanie po roboczej nazwie kroku, duplikowanie kroków, usuwanie i poprawianie połączeń. Nazwy robocze nie trafiają do odbiorcy. Zapis szkicu ma widoczny stan powodzenia lub błędu i ostrzega przed opuszczeniem niezapisanego edytora.
+Edytor pokazuje prostą planszę z maksymalnie 10 kartami kroków i połączeniami. Obsługuje przesuwanie kart, duplikowanie kroków w ramach limitu oraz usuwanie i poprawianie połączeń. Licznik „Kroki: 7/10” pokazuje wykorzystanie limitu. Wyszukiwarka kroków, minimapa i rozbudowane sterowanie przybliżeniem nie są potrzebne. Nazwy robocze nie trafiają do odbiorcy. Zapis szkicu ma widoczny stan powodzenia lub błędu i ostrzega przed opuszczeniem niezapisanego edytora.
 
 Podgląd korzysta z tej samej logiki przejść i walidacji co wykonanie, lecz nie wysyła wiadomości do Meta i nie tworzy prawdziwych kontaktów. Pozwala zacząć od początku, wybierać odpowiedzi i obejrzeć powstające pola, tagi oraz kwalifikację.
 
@@ -62,15 +62,15 @@ Lista z wyszukiwaniem i filtrami: konto Instagram, ścieżka, tag, obecność e-
 
 Admin może poprawić dane kontaktu i tagi oraz usunąć kontakt wraz z odpowiedziami i przebiegami. Usunięcie zatrzymuje jego oczekujące kroki. Techniczne zapisy deduplikacji nie przechowują w tym celu e-maila ani odpowiedzi użytkownika.
 
-## 4. Długie ścieżki i powroty
+## 4. Limit 10 kroków i powroty
 
-Długość nie jest zaszyta w komponencie quizu. Kryterium testowe edytora i silnika: ścieżka ze 100 krokami, wieloma rozgałęzieniami i zbieżnymi połączeniami działa bez utraty zapisu i postępu.
+Limit całego grafu wynosi 10 kroków, wliczając wszystkie gałęzie, Start i Zakończenie. Egzekwują go edytor, API i publikacja. Przy dziesiątym kroku dodawanie i duplikowanie są zablokowane; usunięcie kroku zwalnia miejsce. Kryterium testowe: 10 kroków da się zapisać, opublikować i przejść, a jedenasty jest odrzucany także po bezpośrednim wywołaniu API.
 
 Po każdej zaakceptowanej odpowiedzi zapisujemy bieżący krok, odpowiedź, zmiany pól/tagów i kwalifikację. Błąd lub restart Workera nie powoduje rozpoczęcia od nowa. Przebieg oczekujący na odbiorcę nie zużywa stale działającego procesu ani odpytywania w pętli.
 
 Powtórny komentarz START przy trwającym przebiegu proponuje kontynuację albo świadome rozpoczęcie od początku. Restart zamyka poprzedni przebieg i tworzy nowy na aktualnie opublikowanej wersji; zachowuje profil kontaktu i historię, ale bieżące odpowiedzi quizu zaczynają się od nowa. W danym koncie Instagram jeden kontakt ma najwyżej jeden aktywny przebieg quizu. Rozpoczęcie innej ścieżki wymaga jawnego wyboru odbiorcy.
 
-Pierwsza wersja grafu nie dopuszcza cykli. Długą ścieżkę można budować przez kolejne kroki i rozgałęzienia; ponowne rozpoczęcie obsługuje osobna operacja, a nie pętla w grafie. Automatyczne przejścia między warunkami i akcjami mają ograniczony budżet pracy na wywołanie, z trwałym wznowieniem przez istniejącą Queue, gdy jest potrzebne.
+Graf nie dopuszcza cykli. Ponowne rozpoczęcie obsługuje osobna operacja. Warunki i akcje można przeliczyć lokalnie do następnego pytania, wiadomości albo zakończenia, w granicy 10 kroków. Nie potrzebujemy dodatkowych zadań Queue do porcjowania dużego grafu. Trwałe zadania pozostają wyłącznie dla wysyłki wiadomości i jej odzyskania po awarii.
 
 Odbiorca może przerwać quiz komendą STOP. Ponowienie starego webhooka nie otwiera zatrzymanej rozmowy. Ponowne wejście wymaga nowej świadomej interakcji.
 
@@ -122,7 +122,7 @@ Endpointy panelu wymagają obecnej sesji admina, kontroli pochodzenia mutacji i 
 7. Stary przycisk nie zmienia aktualnego kroku; edycja szkicu nie zmienia trwającej rozmowy.
 8. STOP, pauza admina, wygaśnięcie okna i usunięcie kontaktu zatrzymują właściwe wysyłki.
 9. Lista leadów filtruje po tagu, e-mailu, zainteresowaniu i ścieżce; profil pokazuje odpowiedzi i źródło.
-10. Graf ze 100 krokami przechodzi test zapisu, publikacji, podglądu i wykonania wybranych gałęzi.
+10. Graf z 10 krokami przechodzi test zapisu, publikacji, podglądu i wykonania; krok jedenasty jest blokowany w UI i API.
 11. Podgląd i testy z kontrolowanymi danymi nie wysyłają wiadomości na prawdziwe konta.
 12. Dotychczasowe kampanie komentarz→DM, follow-gate, follow-up i skrzynka przechodzą testy regresji.
 
@@ -136,7 +136,7 @@ Gotowy quiz ma być konfigurowalnym scenariuszem demonstracyjnym z fikcyjnymi da
 
 ## 10. Źródła i następny etap
 
-- Uzgodnienia w rozmowie z użytkownikiem z 2026-09-08: osobny moduł, komentarz START, pełna edycja, długie ścieżki, własna baza, wszystkie warunki kwalifikacji.
+- Uzgodnienia w rozmowie z użytkownikiem z 2026-09-08: osobny moduł, komentarz START, pełna edycja, maksymalnie 10 kroków, własna baza, wszystkie warunki kwalifikacji. Późniejsza decyzja o limicie 10 zastępuje pierwotne założenie dużych grafów.
 - Istniejący kod: prisma/schema.prisma, workers/core/routes/webhook.ts, lib/events/journal.ts, lib/jobs/contracts.ts, lib/delivery/runtime.ts, lib/core/tracked-redirect.ts.
 - Ograniczenia prywatnych odpowiedzi: [oficjalna kolekcja Meta Instagram API](https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api?entity=request-23987686-23eacf45-3728-4e41-bcc7-6d164959327c).
 
