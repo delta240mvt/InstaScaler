@@ -33,6 +33,8 @@ InstaScaler obsługuje najważniejszy przepływ automatyzacji: komentarz zaczyna
 
 Panel i strony publiczne są po polsku, wraz z walidacją, szablonami kampanii, etykietami dostępności oraz formatowaniem dat i liczb. Wygląd korzysta z marki DELTA240MVT: Inter, IBM Plex Mono, jasne tło, czerń i turkus z żółtymi oraz fioletowymi akcentami. Fonty z polskimi znakami są serwowane lokalnie; licencje znajdują się w `public/fonts/`.
 
+Logo panelu, stron informacyjnych i raportów oraz favicon korzystają ze wspólnego pliku `app/icon.svg`, identycznego z faviconem portalu DELTA240MVT.
+
 ## Co robi InstaScaler
 
 | Możliwość | Znaczenie w praktyce |

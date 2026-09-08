@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Icon } from "@/components/ui-icons";
 import { createCoreApi } from "@/lib/core-api/client";
 import { CoreApiError } from "@/lib/core-api/errors";
@@ -30,7 +31,7 @@ export default function ReportPage() {
   if (!report) return <main aria-label="Wczytywanie raportu" aria-busy="true" className="mx-auto min-h-screen max-w-6xl space-y-5 bg-background px-5 py-10 sm:px-8"><div className="app-skeleton h-28" /><div className="app-skeleton h-40" /></main>;
   const metrics = report.analytics;
   return <main className="min-h-screen bg-background"><div className="mx-auto max-w-6xl space-y-7 px-5 py-8 sm:px-8 sm:py-12">
-    <nav aria-label="InstaScaler" className="flex items-center justify-between border-b border-foreground pb-5"><Link href="/login" className="flex items-center gap-3"><span className="flex size-9 items-center justify-center border border-foreground bg-accent text-foreground"><Icon name="campaigns" size={18} /></span><span className="text-xl font-black tracking-tight">InstaScaler</span></Link><span className="font-mono text-[10px] text-muted">DELTA240MVT</span></nav>
+    <nav aria-label="InstaScaler" className="flex items-center justify-between border-b border-foreground pb-5"><Link href="/login" className="flex items-center gap-3"><Image src="/icon.svg" width={36} height={36} alt="" className="shrink-0" unoptimized /><span className="text-xl font-black tracking-tight">InstaScaler</span></Link><span className="font-mono text-[10px] text-muted">DELTA240MVT</span></nav>
     <header className="border-l-4 border-accent py-3 pl-5"><p className="app-kicker">Publiczny raport kampanii</p><h1 className="app-page-title mt-3">{report.name}</h1><p className="app-page-description mt-2">@{report.instagramAccount.username}{report.goal ? ` · ${report.goal}` : ""}</p></header>
     <section aria-label="Wyniki kampanii" className="grid grid-cols-2 gap-3 lg:grid-cols-5"><Metric label="Wysłane wiadomości" value={metrics.sent} /><Metric label="Pominięte" value={metrics.skipped} /><Metric label="Błędy" value={metrics.failed} /><Metric label="Kliknięcia" value={metrics.clicks} /><Metric label="Współczynnik kliknięć" value={`${metrics.ctr.toLocaleString("pl-PL", { maximumFractionDigits: 1 })}%`} /></section>
     <section className="app-card p-5 sm:p-6"><p className="app-kicker">Zaangażowanie</p><h2 className="mt-1 text-lg font-bold">Śledzone linki</h2><div className="mt-5 divide-y divide-border">{report.trackedLinks.length ? report.trackedLinks.map((link) => <div key={link.id} className="flex items-center justify-between gap-4 py-3"><span className="min-w-0 break-all text-sm text-muted">{link.label || link.destinationUrl}</span><strong className="bg-accent-soft px-2.5 py-1 text-sm text-accent">{link._count.clicks.toLocaleString("pl-PL")}</strong></div>) : <p className="py-8 text-center text-sm text-muted">Ta kampania nie ma jeszcze śledzonych linków.</p>}</div></section>

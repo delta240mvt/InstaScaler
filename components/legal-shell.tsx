@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Icon } from "@/components/ui-icons";
+import Image from "next/image";
 
 interface LegalShellProps {
   title: string;
@@ -19,7 +19,7 @@ export default function LegalShell({
       <header className="border-b border-border bg-surface/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5">
           <Link href="/" className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center border border-foreground bg-accent text-foreground"><Icon name="campaigns" size={18} /></span><span className="text-xl font-black tracking-[-0.04em]">InstaScaler</span>
+            <Image src="/icon.svg" width={36} height={36} alt="" className="shrink-0" unoptimized /><span className="text-xl font-black tracking-[-0.04em]">InstaScaler</span>
           </Link>
           <Link
             href="/login"

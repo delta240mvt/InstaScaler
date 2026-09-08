@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { Icon, type IconName } from "@/components/ui-icons";
@@ -58,9 +59,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     >
       <div className="flex h-20 items-center justify-between px-5">
         <Link href="/dashboard" onClick={onClose} className="group flex min-h-11 items-center gap-3 rounded-xl pr-2">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-accent text-black shadow-md shadow-accent/20">
-            <Icon name="sparkles" size={18} />
-          </span>
+          <Image src="/icon.svg" width={36} height={36} alt="" className="shrink-0" unoptimized />
           <span>
             <span className="block font-sans text-lg font-medium tracking-[-0.04em] text-foreground">InstaScaler</span>
             <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">DELTA240MVT</span>
