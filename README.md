@@ -42,7 +42,7 @@ Logo panelu, stron informacyjnych i raportów oraz favicon korzystają ze wspól
 | Kampanie komentarz→DM | Słowo kluczowe, dowolny post, konkretny post albo następny post/Reel. |
 | Początkowy DM i follow-gate | Wiadomość otwierająca, kontrola obserwowania i dostarczenie materiału po potwierdzeniu. |
 | Linki i odpowiedzi | Dokładne URL-e, opcjonalne śledzenie, publiczne odpowiedzi oraz opóźnione follow-upy. |
-| Wiele kont i analityka | Do pięciu kont, skrzynka, logi dostaw, kliknięcia i migawki obserwujących. |
+| Wiele kont i analityka | Do pięciu kont, skrzynka, logi dostaw, kliknięcia oraz historia obserwujących jako wykres liniowy i tabela. |
 | Odporność produkcyjna | R2, Queue, Durable Objects, Workflows, idempotencja i odzyskiwanie błędów. |
 
 ## Kształt środowiska uruchomieniowego

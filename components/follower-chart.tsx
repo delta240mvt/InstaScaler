@@ -29,11 +29,10 @@ export interface FollowerChartPoint {
   delta: number | null;
 }
 
-// Colors read against the light chart surface (#ffffff): the accent line clears
-// 3:1 contrast and grid/axis text match the muted/border tokens. See globals.css.
-const SERIES_COLOR = "var(--foreground)";
-const GRID_COLOR = "var(--border)";
-const AXIS_TEXT = "var(--muted)";
+// Use the current theme tokens, including the darker accent for a legible line.
+const SERIES_COLOR = "var(--color-accent-ink)";
+const GRID_COLOR = "var(--color-border)";
+const AXIS_TEXT = "var(--color-muted)";
 
 function formatCompact(n: number): string {
   return new Intl.NumberFormat("pl-PL", { notation: "compact", maximumFractionDigits: 1 }).format(n);
@@ -200,12 +199,12 @@ export default function FollowerChart({
                 cursor={{ stroke: GRID_COLOR, strokeWidth: 1 }}
               />
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="followers"
                 stroke={SERIES_COLOR}
                 strokeWidth={2}
                 dot={false}
-                activeDot={{ r: 4, fill: SERIES_COLOR, stroke: "var(--surface)", strokeWidth: 2 }}
+                activeDot={{ r: 4, fill: SERIES_COLOR, stroke: "var(--color-surface)", strokeWidth: 2 }}
                 isAnimationActive={false}
               />
             </LineChart>

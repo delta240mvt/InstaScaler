@@ -1,6 +1,40 @@
 import { expect, test, type Page } from "@playwright/test";
 import { fixtureApi } from "./local-fixtures";
 
+test("follower history draws a visible line and switches between chart and table", async ({ page }, testInfo) => {
+  await fixtureApi(page);
+  const history = Array.from({ length: 36 }, (_, index) => ({
+    date: new Date(Date.UTC(2026, 7, 4 + index)).toISOString(),
+    followersCount: 8895 + Math.round((445 * index) / 35),
+    backfilled: false,
+  }));
+  await page.route("**/api/instagram/follower-history?**", (route) => route.fulfill({
+    contentType: "application/json", body: JSON.stringify({ data: history }),
+  }));
+  await page.goto("/overview");
+  const chart = page.locator(".app-card").filter({ has: page.getByRole("heading", { name: "Historia liczby obserwujących" }) });
+  await expect(chart).toContainText("9340 obecnie");
+  await expect(chart).toContainText("+445");
+  const line = chart.locator(".recharts-line-curve");
+  await expect(line).toBeVisible();
+  await expect(line).not.toHaveCSS("stroke", "none");
+  await expect(line).not.toHaveCSS("stroke", "rgba(0, 0, 0, 0)");
+  const bounds = await line.evaluate((element) => {
+    const { width, height } = (element as SVGGraphicsElement).getBBox();
+    return { width, height };
+  });
+  expect(bounds.width).toBeGreaterThan(100);
+  expect(bounds.height).toBeGreaterThan(50);
+  await chart.screenshot({ path: testInfo.outputPath("follower-chart.png") });
+  await page.getByRole("button", { name: "Pokaż tabelę", exact: true }).click();
+  await expect(chart.locator("tbody tr")).toHaveCount(36);
+  await expect(chart.locator("tbody tr").first()).toContainText("9340");
+  await page.getByRole("button", { name: "Pokaż wykres", exact: true }).click();
+  await expect(line).toBeVisible();
+  await expect(line).not.toHaveCSS("stroke", "none");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 async function fillNewCampaign(page: Page, name: string, message: string) {
   await expect(page.getByRole("main").getByText("konto_testowe", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "dowolny post lub rolkę", exact: true }).click();
