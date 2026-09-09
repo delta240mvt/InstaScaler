@@ -4,6 +4,12 @@ import jobsWorker, { consumeQueueBatch, retryDelaySeconds } from "@/workers/jobs
 import type { JobsEnv } from "@/lib/cloudflare/env";
 
 describe("Queue consumer", () => {
+  it("keeps the durable backup while an immediate delivery is still processing", async () => {
+    const deliver = vi.fn();
+    const db = { processedEvent: { findUnique: async () => ({ terminalStatus: "PROCESSING" }), create: vi.fn(), update: vi.fn(), updateMany: vi.fn() } };
+    expect(await processInstagramJob({ db, load: vi.fn(), deliver }, { version: 1, kind: "MESSAGE", externalId: "event", instagramAccountId: "account", r2Key: "events/x.json" })).toEqual({ status: "retry", code: "EVENT_IN_PROGRESS" });
+    expect(deliver).not.toHaveBeenCalled();
+  });
   it("does not deliver a duplicate external event twice", async () => {
     const delivery = vi.fn(async () => ({ status: "sent" as const, code: "SENT" }));
     const db = { processedEvent: { updateMany: vi.fn(async () => ({ count: 1 })), findUnique: async () => ({ terminalStatus: "COMPLETED" }), create: vi.fn(), update: vi.fn() } };

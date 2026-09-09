@@ -39,7 +39,7 @@ it("supports every criterion and AND without qualifying empty groups", () => {
 });
 it("executes text, fields and both condition outcomes through human or completed ends", () => {
   const graph: QuizGraph = { schemaVersion: 1, qualification: { mode: "all", rules: [{ kind: "field", key: "cel", value: "pomoc" }, { kind: "completed", nodeId: "q" }] }, nodes: [
-    { ...newNode("start", "s"), type: "start", allPosts: true, postIds: [], keyword: "START", text: "Start", cta: "Start", next: "q" },
+    { ...newNode("start", "s"), type: "start", trigger: "comment", allPosts: true, postIds: [], keyword: "START", text: "Start", cta: "Start", next: "q" },
     { ...newNode("question", "q"), type: "question", text: "Jaki cel?", input: "text", field: "cel", required: true, choices: [], next: "warunek" },
     { ...newNode("condition", "warunek"), type: "condition", when: { mode: "any", rules: [{ kind: "answer", nodeId: "q", value: "pomoc" }] }, yes: "human", no: "end" },
     { ...newNode("end", "human"), type: "end", outcome: "human" },

@@ -66,7 +66,7 @@ Całą ścieżkę edytujesz w panelu administratora: treści, odpowiedzi, połą
 
 ### Pierwsza ścieżka w panelu
 
-1. Otwórz **Ścieżki** (`/paths`), wybierz konto Instagram i kliknij **Utwórz ścieżkę**. Otrzymasz edytowalny przykład.
+1. Otwórz **Ścieżki** (`/paths`), wybierz konto Instagram oraz sposób uruchomienia: **Komentarz pod postem** albo **Słowo w DM**, i kliknij **Utwórz ścieżkę**. Otrzymasz edytowalny przykład.
 2. Dostosuj Start, pytania, odpowiedzi i połączenia. W zakładce **Kwalifikacja** wybierz, kiedy kontakt ma zostać wartościowym leadem.
 3. Przejdź obie gałęzie w **Podglądzie**. Symulacja używa tego samego silnika co quiz, bez wysyłania DM i zapisywania kontaktów.
 4. Kliknij **Zapisz szkic**, popraw wskazane błędy, a następnie **Opublikuj i włącz**. Publikację blokują m.in. pętle, brakujące połączenia oraz konflikt hasła i postów z aktywną kampanią lub inną ścieżką.
@@ -76,13 +76,13 @@ Lista ścieżek pokazuje liczby przebiegów: rozpoczętych, zakończonych i spe�
 
 ### Wejście, kwalifikacja i sterowanie rozmową
 
-Wejście to komentarz z hasłem (domyślnie START) → jeden prywatny DM z przyciskiem → kliknięcie „Zaczynamy” → quiz. Sam komentarz nie otwiera standardowego okna wiadomości. Kolejne DM wymagają uprawnionej interakcji z ostatnich 24 godzin; czas pochodzi z Meta, a nie z ponowienia zadania. Brak wiarygodnej daty komentarza blokuje otwierający DM. Nie ma automatycznego DM po nowym obserwowaniu.
+Wejście wybierasz podczas tworzenia ścieżki lub w kroku Start: komentarz z hasłem pod wybranymi postami albo słowo w DM. W obu wariantach odbiorca otrzymuje zaproszenie z przyciskiem; kliknięcie rozpoczyna quiz. DM nie wymaga wyboru postów. Dotychczasowe ścieżki zachowują wejście przez komentarz. Aktywna rozmowa ma pierwszeństwo przed hasłem nowej ścieżki; STOP nadal zatrzymuje rozmowę. Konflikty haseł sprawdzane są osobno dla komentarzy i DM, również względem standardowych automatyzacji. Sam komentarz nie otwiera standardowego okna wiadomości. Kolejne DM wymagają uprawnionej interakcji z ostatnich 24 godzin; czas pochodzi z Meta, a nie z ponowienia zadania. Brak wiarygodnej daty komentarza blokuje otwierający DM. Nie ma automatycznego DM po nowym obserwowaniu.
 
 Odbiorca może pominąć opcjonalne pytanie lub napisać STOP. Administrator może wstrzymać quiz, wznowić go albo zakończyć; ręczna odpowiedź w skrzynce wstrzymuje aktywny quiz. Wyłączenie nowych wejść nie zatrzymuje rozpoczętych rozmów — do tego służy osobne wstrzymanie całej ścieżki. Niepewna wysyłka jest oznaczona do sprawdzenia i nie jest automatycznie powtarzana.
 
 Domyślna kwalifikacja to poprawny e-mail **LUB** zainteresowanie pomocą/ofertą. W edytorze można ustawić dowolny lub wszystkie warunki. Adres jest sprawdzany składniowo, bez potwierdzenia własności i bez automatycznej zgody marketingowej. „Materiał wysłany” nie oznacza kliknięcia, przeczytania ani zakupu; quiz nie śledzi kliknięć per odbiorca. Dane kontaktów nie trafiają do publicznych raportów.
 
-Przebiegi i wysyłki są zapisywane w Neon. Kompaktowe zadania `QUIZ_STEP` używają istniejącej Queue i dziennika `quiz-steps/` w R2. Odzyskiwanie obsługuje przerwanie przed publikacją zadania i po zapisaniu odpowiedzi. Usunięcie kontaktu usuwa jego profil i odpowiedzi oraz zostawia techniczny odcisk chroniący przed odtworzeniem danych ze starego zdarzenia. Nowy, późniejszy komentarz może rozpocząć kontakt ponownie.
+Przebiegi i wysyłki są zapisywane w Neon. Odczyty relacji Prisma używają SQL JOIN (`relationJoins`), aby nie wykonywać osobnego żądania do bazy dla każdej tabeli. Lokalne przejścia przez tagi i warunki do następnej wiadomości wykonują się w jednej transakcji z blokadą kontaktu, maksymalnie 10 kroków. Po zapisaniu R2, przyjęciu zdarzenia w Neon i publikacji zadania w Queue, Core wywołuje Jobs przez prywatny binding usługowy w tle (`waitUntil`). Nie czeka z odpowiedzią webhooka na wysyłkę. Jobs wysyła odpowiedzi Ścieżki podczas obsługi bieżącego zdarzenia, tak jak w automatyzacji komentarz → DM, bez dodatkowego oczekiwania na kolejkę dla każdej wiadomości. Każdy krok nadal ma zapis `quiz-steps/` w R2, ochronę przed duplikatami i rezerwację limitu konta. Kolejne wiadomości wykonują się w kolejności, maksymalnie 10 w jednym przebiegu. Zadanie wejściowe w Queue pozostaje zabezpieczeniem awaryjnym; atomowe przejęcie `ProcessedEvent` chroni przed podwójną wysyłką, a zadanie w toku jest ponawiane zamiast usuwane. Kompaktowe zadania `QUIZ_STEP` w istniejącej Queue obsługują ponowienia (pierwsze po 60 sekundach), odzyskiwanie i sterowanie z panelu. Odzyskiwanie obsługuje przerwanie przed publikacją zadania i po zapisaniu odpowiedzi. Usunięcie kontaktu usuwa jego profil i odpowiedzi oraz zostawia techniczny odcisk chroniący przed odtworzeniem danych ze starego zdarzenia. Nowy, późniejszy komentarz lub DM może rozpocząć kontakt ponownie.
 
 ## Kształt środowiska uruchomieniowego
 

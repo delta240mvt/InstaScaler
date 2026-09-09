@@ -40,7 +40,7 @@ describe("Core durable webhook acknowledgement", () => {
     expect((send.mock.calls[0] as unknown as [{ externalId: string }])[0].externalId.length).toBeLessThanOrEqual(255);
   });
 
-  it("records inbound admission after journaling and before publishing", async () => {
+  it.each([false, true])("persists before immediate delivery and keeps Queue fallback (RPC fails=%s)", async fails => {
     const order: string[] = [];
     const tasks: Promise<unknown>[] = [];
     const db = {
@@ -51,9 +51,9 @@ describe("Core durable webhook acknowledgement", () => {
         processedEvent: { findUnique: async () => null, create: async () => { order.push("admission"); return {}; } },
       }),
     };
-    const response = await webhookRoutes(() => db as never).fetch(await request(event), { META_APP_SECRET: "secret", EVENT_JOURNAL: { put: async () => { order.push("journal"); } }, INSTAGRAM_EVENTS: { send: async () => { order.push("queue"); } } } as never, { waitUntil: (task: Promise<unknown>) => tasks.push(task) } as never);
+    const response = await webhookRoutes(() => db as never).fetch(await request(event), { META_APP_SECRET: "secret", EVENT_JOURNAL: { put: async () => { order.push("journal"); } }, INSTAGRAM_EVENTS: { send: async () => { order.push("queue"); } }, JOBS_API: { processEvent: async () => { order.push("jobs"); if (fails) throw new Error("RPC unavailable"); } } } as never, { waitUntil: (task: Promise<unknown>) => tasks.push(task) } as never);
     expect(response.status).toBe(200);
     await Promise.all(tasks);
-    expect(order).toEqual(["journal", "admission", "queue"]);
+    expect(order).toEqual(["journal", "admission", "queue", "jobs"]);
   });
 });

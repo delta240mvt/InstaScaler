@@ -31,7 +31,7 @@ export async function controlQuizRun(db: QuizDb, runId: string, action: "pause" 
       const graph = graphSchema.parse(version.graph);
       const snapshot = initialSnapshot(graph, snapshotOf(run.snapshot));
       const eligible = canSendQuizMessage({ now, lastInteractionAt: run.lastInteractionAt, opening: false, blocked: false, commentCreatedAt: null });
-      const next = await tx.quizRun.create({ data: { contactId: run.contactId, pathId: run.pathId, versionId: version.id, status: eligible ? "ACTIVE" : "WAITING_WINDOW", snapshot: json(snapshot), sourceCommentId: run.sourceCommentId, sourcePostId: run.sourcePostId, commentCreatedAt: run.commentCreatedAt, lastInteractionAt: run.lastInteractionAt } });
+      const next = await tx.quizRun.create({ data: { contactId: run.contactId, pathId: run.pathId, versionId: version.id, status: eligible ? "ACTIVE" : "WAITING_WINDOW", snapshot: json(snapshot), sourceCommentId: run.sourceCommentId, sourcePostId: run.sourcePostId, sourceMessageId: run.sourceMessageId, commentCreatedAt: run.commentCreatedAt, lastInteractionAt: run.lastInteractionAt } });
       id = next.id;
     } else {
       if (run.path.halted || await tx.quizWork.findFirst({ where: { runId, status: { in: ["SENDING", "UNKNOWN"] } } })) throw new QuizError("quiz_send_uncertain", 409);

@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { parseQuizDraft } from "@/lib/quiz/contracts";
+import { graphSchema, parseQuizDraft } from "@/lib/quiz/contracts";
 import { createDemoGraph } from "@/lib/quiz/demo";
 import { validateGraph } from "@/lib/quiz/graph";
 
@@ -8,6 +8,14 @@ it("publishes a complete branching Polish demo within ten steps", () => {
   expect(graph.nodes.length).toBeLessThanOrEqual(10);
   expect(validateGraph(graph)).toEqual([]);
   expect(parseQuizDraft({ name: "Ścieżka", instagramAccountId: "acc", graph }).name).toBe("Ścieżka");
+});
+it("defaults legacy starts to comments and accepts DM starts without posts", () => {
+  const graph = createDemoGraph();
+  const legacy = { ...graph, nodes: graph.nodes.map(n => { const copy = { ...n } as Record<string, unknown>; delete copy.trigger; return copy; }) };
+  expect(graphSchema.parse(legacy).nodes[0]).toMatchObject({ trigger: "comment" });
+  const dm = graphSchema.parse({ ...graph, nodes: graph.nodes.map(n => n.type === "start" ? { ...n, trigger: "dm", allPosts: false, postIds: [] } : n) });
+  expect(validateGraph(dm)).toEqual([]);
+  expect(graphSchema.safeParse({ ...graph, nodes: graph.nodes.map(n => n.type === "start" ? { ...n, trigger: "unknown" } : n) }).success).toBe(false);
 });
 it("rejects eleven steps in a draft, duplicate ids and cycles at publication", () => {
   const graph = createDemoGraph();

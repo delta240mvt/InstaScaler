@@ -1,21 +1,31 @@
 import type { JobsEnv } from "@/lib/cloudflare/env";
 import type { EventEnvelope } from "@/lib/events/journal";
 import type { JobResult } from "./index";
-import { graphSchema } from "@/lib/quiz/contracts";
+import { graphSchema, type QuizGraph } from "@/lib/quiz/contracts";
 import { acceptQuizControl, acceptQuizInput, advanceQuizRun, createQuizEntry, participantKey, reconcileQuizButton } from "@/lib/quiz/execution";
 import { activeStatuses, snapshotOf, type QuizDb } from "@/lib/quiz/repository";
 import { decodeQuizPayload } from "./quiz-payload";
 import { canSendQuizMessage, sourceTimestamp } from "./quiz-policy";
-import { dispatchQuizWork } from "./quiz-work";
+import { dispatchQuizWorkNow } from "./quiz-work";
 import { matchKeywords } from "@/lib/utils/keyword-matcher";
+
+function matchesQuizEntry(graph: QuizGraph, e: EventEnvelope) {
+  const start = graph.nodes.find(n => n.type === "start");
+  if (!start || typeof e.payload.text !== "string") return false;
+  const channelMatches = e.kind === "COMMENT"
+    ? start.trigger === "comment" && (start.allPosts || start.postIds.includes(String(e.payload.mediaId)))
+    : e.kind === "MESSAGE" && start.trigger === "dm" && !e.payload.quickReplyPayload && e.payload.text.trim().toUpperCase() !== "STOP";
+  return channelMatches && matchKeywords(e.payload.text, [start.keyword], true).matched;
+}
 
 export async function isQuizRecoveryEvent(db: QuizDb, e: EventEnvelope) {
   if ([e.payload?.payload, e.payload?.quickReplyPayload].some(v => typeof v === "string" && v.startsWith("quiz1:"))) return true;
   const account = await db.instagramAccount.findUnique({ where: { instagramId: e.instagramAccountId }, select: { id: true } });
   if (!account) return false;
-  if (e.kind === "COMMENT") {
+  if (e.kind === "COMMENT" || e.kind === "MESSAGE") {
     const paths = await db.quizPath.findMany({ where: { instagramAccountId: account.id, acceptsEntries: true }, include: { publishedVersion: true }, take: 500 });
-    return paths.some(p => { const start = p.publishedVersion && graphSchema.parse(p.publishedVersion.graph).nodes.find(n => n.type === "start"); return start?.type === "start" && (start.allPosts || start.postIds.includes(String(e.payload.mediaId))) && matchKeywords(String(e.payload.text), [start.keyword], true).matched; });
+    if (paths.some(p => p.publishedVersion && matchesQuizEntry(graphSchema.parse(p.publishedVersion.graph), e))) return true;
+    if (e.kind === "COMMENT") return false;
   }
   const userId = e.kind === "MESSAGE" ? e.payload.senderId : e.payload.userId;
   if (typeof userId !== "string") return false;
@@ -33,22 +43,21 @@ export async function routeQuizEvent(db: QuizDb, env: JobsEnv, e: EventEnvelope)
   if (!userId) return recognized ? { status: "skipped", code: "QUIZ_INVALID_USER" } : null;
   const timestamp = sourceTimestamp(text("occurredAt"), new Date(e.receivedAt), "ms");
   const occurredAt = timestamp ? new Date(timestamp) : null;
-  if (e.kind === "COMMENT") {
+  const key = e.kind !== "COMMENT" ? await participantKey(account.id, userId) : null;
+  const contact = key ? await db.quizContact.findUnique({ where: { instagramAccountId_participantKey: { instagramAccountId: account.id, participantKey: key } } }) : null;
+  const active = contact && !contact.deletedAt ? await db.quizRun.findFirst({ where: { contactId: contact.id, status: { in: [...activeStatuses] } } }) : null;
+  if (e.kind === "COMMENT" || (e.kind === "MESSAGE" && !active && !raw && text("text").trim().toUpperCase() !== "STOP")) {
     const paths = await db.quizPath.findMany({ where: { instagramAccountId: account.id, acceptsEntries: true, halted: false }, include: { publishedVersion: true }, orderBy: { createdAt: "asc" }, take: 500 });
-    const path = paths.find(p => {
-      if (!p.publishedVersion) return false;
-      const start = graphSchema.parse(p.publishedVersion.graph).nodes.find(n => n.type === "start");
-      return start?.type === "start" && (start.allPosts || start.postIds.includes(text("mediaId"))) && matchKeywords(text("text"), [start.keyword], true).matched;
-    });
+    const path = paths.find(p => p.publishedVersion && matchesQuizEntry(graphSchema.parse(p.publishedVersion.graph), e));
     if (!path?.publishedVersionId) return null;
-    if (!occurredAt || !canSendQuizMessage({ now: new Date(), lastInteractionAt: null, commentCreatedAt: occurredAt, opening: true, blocked: false })) return { status: "skipped", code: "QUIZ_COMMENT_TIME_UNKNOWN_OR_EXPIRED" };
-    const entry = await createQuizEntry(db, { accountId: account.id, instagramUserId: userId, username: text("fromUsername") || null, pathVersionId: path.publishedVersionId, commentId: text("commentId"), postId: text("mediaId"), externalId: e.externalId, occurredAt, receivedAt: new Date(e.receivedAt) });
-    if ("workId" in entry) await dispatchQuizWork(db, env, entry.workId);
+    const comment = e.kind === "COMMENT";
+    if (!occurredAt || !canSendQuizMessage({ now: new Date(), lastInteractionAt: comment ? null : occurredAt, commentCreatedAt: comment ? occurredAt : null, opening: comment, blocked: false })) return { status: "skipped", code: comment ? "QUIZ_COMMENT_TIME_UNKNOWN_OR_EXPIRED" : "QUIZ_INTERACTION_EXPIRED" };
+    const source = comment ? { kind: "COMMENT" as const, commentId: text("commentId"), postId: text("mediaId") } : { kind: "MESSAGE" as const, messageId: text("messageId") };
+    if (!(source.kind === "COMMENT" ? source.commentId : source.messageId)) return { status: "skipped", code: "QUIZ_INVALID_SOURCE" };
+    const entry = await createQuizEntry(db, { accountId: account.id, instagramUserId: userId, username: text("fromUsername") || null, pathVersionId: path.publishedVersionId, ...source, externalId: e.externalId, occurredAt, receivedAt: new Date(e.receivedAt) });
+    if ("workId" in entry) await dispatchQuizWorkNow(db, env, entry.workId);
     return { status: "skipped", code: "QUIZ_ENTRY_HANDLED" };
   }
-  const key = await participantKey(account.id, userId);
-  const contact = await db.quizContact.findUnique({ where: { instagramAccountId_participantKey: { instagramAccountId: account.id, participantKey: key } } });
-  const active = contact && !contact.deletedAt ? await db.quizRun.findFirst({ where: { contactId: contact.id, status: { in: [...activeStatuses] } } }) : null;
   if (!active && !recognized) return null;
   if (!active) return { status: "skipped", code: "QUIZ_NO_ACTIVE_RUN" };
   const button = recognized ? decodeQuizPayload(raw) : null;
@@ -67,6 +76,6 @@ export async function routeQuizEvent(db: QuizDb, env: JobsEnv, e: EventEnvelope)
     await acceptQuizInput(db, { runId, expectedRevision: button?.revision ?? active.revision, externalId: e.externalId, instagramUserId: userId, instagramAccountId: account.id, nodeId: button?.nodeId ?? snapshotOf(active.snapshot).nodeId, occurredAt: occurredAt ?? new Date(0), input: stop ? { kind: "stop" } : button?.action === "skip" ? { kind: "skip" } : { kind: "answer", value: text("text"), ...(button ? { choiceId: button.choiceId } : {}) } });
   }
   const next = await advanceQuizRun(db, runId);
-  if (next.workId) await dispatchQuizWork(db, env, next.workId);
+  if (next.workId) await dispatchQuizWorkNow(db, env, next.workId);
   return { status: "skipped", code: "QUIZ_INPUT_HANDLED" };
 }

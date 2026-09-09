@@ -25,7 +25,8 @@ export function validateGraph(graph: QuizGraph): GraphIssue[] {
   checkRules(graph.qualification);
   for (const n of graph.nodes) {
     for (const t of targets(n)) if (!t || !nodes.has(t)) add("MISSING_TARGET", "Wybierz następny krok.", n.id);
-    if (n.type === "start" && (!n.keyword.trim() || !n.text.trim() || !n.cta.trim() || (!n.allPosts && !n.postIds.length))) add("INCOMPLETE_START", "Uzupełnij hasło, posty, wiadomość i przycisk Startu.", n.id);
+    if (n.type === "start" && (!n.keyword.trim() || !n.text.trim() || !n.cta.trim() || (n.trigger !== "dm" && !n.allPosts && !n.postIds.length))) add("INCOMPLETE_START", n.trigger === "dm" ? "Uzupełnij hasło w DM, wiadomość i przycisk Startu." : "Uzupełnij hasło, posty, wiadomość i przycisk Startu.", n.id);
+    if (n.type === "start" && n.trigger === "dm" && n.keyword.trim().toUpperCase() === "STOP") add("RESERVED_KEYWORD", "STOP służy do zakończenia rozmowy. Wybierz inne hasło.", n.id);
     if ((n.type === "message" || n.type === "question") && !n.text.trim()) add("EMPTY_TEXT", "Uzupełnij wiadomość.", n.id);
     if (n.type === "question") {
       if (!n.field || (n.input === "choice" && (!n.choices.length || n.choices.some(c => !c.label.trim()) || new Set(n.choices.map(c => c.id)).size !== n.choices.length))) add("INVALID_QUESTION", "Uzupełnij pole i unikalne odpowiedzi.", n.id);

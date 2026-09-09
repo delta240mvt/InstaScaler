@@ -4,7 +4,7 @@ export const nodeLabels: Record<QuizNode["type"], string> = { start: "Start", me
 export function newNode(type: QuizNode["type"], id: string): QuizNode {
   const b = { id, label: nodeLabels[type], x: 40, y: 40 };
   switch (type) {
-    case "start": return { ...b, type, keyword: "START", allPosts: false, postIds: [], text: "Kliknij, aby rozpocząć quiz.", cta: "Zaczynamy", next: "" };
+    case "start": return { ...b, type, trigger: "comment", keyword: "START", allPosts: false, postIds: [], text: "Kliknij, aby rozpocząć quiz.", cta: "Zaczynamy", next: "" };
     case "message": return { ...b, type, text: "", next: "" };
     case "question": return { ...b, type, text: "", input: "text", field: id, required: true, choices: [], next: "" };
     case "condition": return { ...b, type, when: { mode: "any", rules: [{ kind: "email" }] }, yes: "", no: "" };

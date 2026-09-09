@@ -5,6 +5,7 @@ generator client {
   output   = "../app/generated/prisma"
   engineType = "client"
   runtime = "cloudflare"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -348,9 +349,10 @@ model QuizRun {
   status QuizRunStatus @default(WAITING_START)
   snapshot Json
   revision Int @default(0)
-  sourceCommentId String
-  sourcePostId String
-  commentCreatedAt DateTime
+  sourceCommentId String?
+  sourcePostId String?
+  sourceMessageId String?
+  commentCreatedAt DateTime?
   lastInteractionAt DateTime?
   qualified Boolean @default(false)
   qualificationReasons String[] @default([])

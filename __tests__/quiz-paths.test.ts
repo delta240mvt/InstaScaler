@@ -16,3 +16,10 @@ it("allows incomplete drafts but reports precise publication problems", () => {
   node.next = "";
   expect(validateGraph(graph)).toContainEqual({ code: "MISSING_TARGET", message: "Wybierz następny krok.", nodeId: "start" });
 });
+it("separates comment and DM triggers, with no post restriction for DMs", () => {
+  const comment = { trigger: "comment" as const, allPosts: false, postIds: ["123"], keyword: "START" };
+  const dm = { trigger: "dm" as const, allPosts: false, postIds: [], keywords: ["start"], matchAnyWord: false };
+  expect(triggersOverlap(comment, dm)).toBe(false);
+  expect(triggersOverlap({ ...comment, trigger: "dm" }, dm)).toBe(true);
+  expect(triggersOverlap({ ...comment, trigger: "dm" }, { ...dm, keywords: ["other"] })).toBe(false);
+});

@@ -32,7 +32,7 @@ export async function listContactRuns(db: QuizDb, id: string, raw: Record<string
   const { page, pageSize } = pageQuery.parse(raw);
   const where = { contactId: id };
   const [rows, total] = await Promise.all([db.quizRun.findMany({ where, include: { path: { select: { name: true } }, version: { select: { number: true } } }, orderBy: { createdAt: "desc" }, take: pageSize, skip: (page - 1) * pageSize }), db.quizRun.count({ where })]);
-  const items: RunSummary[] = rows.map(r => ({ id: r.id, pathId: r.pathId, pathName: r.path.name, version: r.version.number, status: r.status, snapshot: snapshotOf(r.snapshot), sourcePostId: r.sourcePostId, qualified: r.qualified, qualificationReasons: r.qualificationReasons, lastInteractionAt: r.lastInteractionAt?.toISOString() ?? null, createdAt: r.createdAt.toISOString() }));
+  const items: RunSummary[] = rows.map(r => ({ id: r.id, pathId: r.pathId, pathName: r.path.name, version: r.version.number, status: r.status, snapshot: snapshotOf(r.snapshot), sourcePostId: r.sourcePostId, sourceMessageId: r.sourceMessageId, qualified: r.qualified, qualificationReasons: r.qualificationReasons, lastInteractionAt: r.lastInteractionAt?.toISOString() ?? null, createdAt: r.createdAt.toISOString() }));
   return { items, total, page, pageSize };
 }
 export async function listRunEvents(db: QuizDb, runId: string, raw: Record<string, string>) {

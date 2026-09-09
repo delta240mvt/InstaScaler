@@ -22,6 +22,7 @@ export async function processInstagramJob(
   job: InstagramJob,
 ): Promise<JobResult> {
   const existing = await context.db.processedEvent.findUnique({ where: { externalId: job.externalId } });
+  if (existing?.terminalStatus === "PROCESSING") return { status: "retry", code: "EVENT_IN_PROGRESS" };
   if (existing && existing.terminalStatus !== "RETRYING" && existing.terminalStatus !== "RECEIVED") return { status: "skipped", code: "DUPLICATE_EVENT" };
   if (!existing) await context.db.processedEvent.create({ data: { externalId: job.externalId, instagramAccountId: context.accountId, source: job.kind === "FOLLOW_UP" || job.kind === "QUIZ_STEP" ? "INTERNAL" : "WEBHOOK", kind: job.kind, r2Key: job.r2Key ?? null, terminalStatus: "PROCESSING" } });
   else {

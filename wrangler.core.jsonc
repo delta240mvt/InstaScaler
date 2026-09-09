@@ -4,6 +4,7 @@
   "main": "workers/core/index.ts",
   "compatibility_date": "2026-08-02",
   "compatibility_flags": ["nodejs_compat"],
+  "placement": { "region": "aws:eu-central-1" },
   "observability": { "enabled": true },
   "services": [{ "binding": "JOBS_API", "service": "instascaler-jobs", "entrypoint": "ManualMessages" }],
   "durable_objects": {

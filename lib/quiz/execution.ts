@@ -1,14 +1,14 @@
-import { graphSchema, type QuizInput, type Snapshot } from "./contracts";
+import { graphSchema, MAX_QUIZ_NODES, type QuizInput, type Snapshot } from "./contracts";
 import { advanceNode, initialSnapshot } from "./engine";
 import { qualify } from "./qualification";
-import { activeStatuses, createQuizRepository, createWork, json, lockAccount, lockContact, runInclude, saveSnapshot, snapshotOf, statusFor, type QuizDb, type QuizTx, type RunRecord, type WorkPayload } from "./repository";
+import { activeStatuses, createWork, json, lockAccount, lockContact, runInclude, saveSnapshot, snapshotOf, statusFor, type QuizDb, type QuizTx, type RunRecord, type WorkPayload } from "./repository";
 import type { QuizButtonContext } from "@/lib/delivery/quiz-payload";
 import { canSendQuizMessage } from "@/lib/delivery/quiz-policy";
 
 export async function participantKey(accountId: string, userId: string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify([accountId, userId])))), b => b.toString(16).padStart(2, "0")).join("");
 }
-type EntryInput = { accountId: string; instagramUserId: string; username: string | null; pathVersionId: string; commentId: string; postId: string; externalId: string; occurredAt: Date; receivedAt: Date };
+type EntryInput = { accountId: string; instagramUserId: string; username: string | null; pathVersionId: string; externalId: string; occurredAt: Date; receivedAt: Date } & ({ kind?: "COMMENT"; commentId: string; postId: string } | { kind: "MESSAGE"; messageId: string });
 async function newRun(tx: QuizTx, input: EntryInput, contactId: string) {
   const version = await tx.quizVersion.findUniqueOrThrow({ where: { id: input.pathVersionId }, include: { path: true } });
   const graph = graphSchema.parse(version.graph);
@@ -16,9 +16,13 @@ async function newRun(tx: QuizTx, input: EntryInput, contactId: string) {
   if (start.type !== "start") throw new Error("quiz_invalid_graph");
   const contact = await tx.quizContact.findUniqueOrThrow({ where: { id: contactId } });
   const snapshot: Snapshot = { ...initialSnapshot(graph, { email: contact.email, tags: contact.tags, fields: contact.fields as Snapshot["fields"] }), nodeId: start.id, phase: "waiting", completedNodeIds: [] };
-  const run = await tx.quizRun.create({ data: { contactId, pathId: version.pathId, versionId: version.id, snapshot: json(snapshot), sourceCommentId: input.commentId, sourcePostId: input.postId, commentCreatedAt: input.occurredAt } });
+  const source = input.kind === "MESSAGE"
+    ? { sourceMessageId: input.messageId, lastInteractionAt: input.occurredAt }
+    : { sourceCommentId: input.commentId, sourcePostId: input.postId, commentCreatedAt: input.occurredAt };
+  const run = await tx.quizRun.create({ data: { contactId, pathId: version.pathId, versionId: version.id, snapshot: json(snapshot), ...source } });
+  if (input.kind === "MESSAGE") await tx.quizContact.update({ where: { id: contactId }, data: { lastInteractionAt: contact.lastInteractionAt && contact.lastInteractionAt > input.occurredAt ? contact.lastInteractionAt : input.occurredAt } });
   await tx.quizEvent.create({ data: { runId: run.id, externalId: input.externalId, nodeId: start.id, kind: "ENTRY" } });
-  const work = await createWork(tx, run, { opening: true, commentId: input.commentId, message: { text: start.text, buttons: [] }, controls: [{ label: start.cta, action: "start" }] }, snapshot);
+  const work = await createWork(tx, run, { opening: input.kind !== "MESSAGE", ...(input.kind !== "MESSAGE" ? { commentId: input.commentId } : {}), message: { text: start.text, buttons: [] }, controls: [{ label: start.cta, action: "start" }] }, snapshot);
   return { runId: run.id, workId: work.id };
 }
 export async function createQuizEntry(db: QuizDb, input: EntryInput): Promise<{ runId: string; workId: string } | { blocked: true }> {
@@ -29,6 +33,9 @@ export async function createQuizEntry(db: QuizDb, input: EntryInput): Promise<{ 
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))::text`;
     const version = await tx.quizVersion.findUnique({ where: { id: input.pathVersionId }, include: { path: true } });
     if (!version || !version.path.acceptsEntries || version.path.halted || version.path.instagramAccountId !== input.accountId || version.path.publishedVersionId !== version.id) return { blocked: true };
+    const start = graphSchema.parse(version.graph).nodes.find(n => n.type === "start");
+    if (!start || (start.trigger === "dm") !== (input.kind === "MESSAGE")) return { blocked: true };
+    if (input.kind === "MESSAGE" && !canSendQuizMessage({ now: new Date(), lastInteractionAt: input.occurredAt, commentCreatedAt: null, opening: false, blocked: false })) return { blocked: true };
     if (await tx.quizEvent.findUnique({ where: { externalId: input.externalId } })) return { blocked: true };
     let contact = await tx.quizContact.findUnique({ where: { instagramAccountId_participantKey: { instagramAccountId: input.accountId, participantKey: key } } });
     if (contact) {
@@ -40,6 +47,8 @@ export async function createQuizEntry(db: QuizDb, input: EntryInput): Promise<{ 
     } else contact = await tx.quizContact.create({ data: { instagramAccountId: input.accountId, participantKey: key, instagramUserId: input.instagramUserId, username: input.username } });
     const active = await tx.quizRun.findFirst({ where: { contactId: contact.id, status: { in: [...activeStatuses] } }, include: runInclude });
     if (!active) return newRun(tx, input, contact.id);
+    // A DM keyword must never replace or restart an existing conversation, including concurrent entries.
+    if (input.kind === "MESSAGE") return { blocked: true };
     if (["PAUSED", "HUMAN", "UNKNOWN"].includes(active.status) || active.path.halted || await tx.quizWork.findFirst({ where: { runId: active.id, status: { in: ["PENDING", "SENDING", "UNKNOWN"] } } })) return { blocked: true };
     await tx.quizEvent.create({ data: { runId: active.id, externalId: input.externalId, kind: "REENTRY", data: json({ versionId: version.id }) } });
     const same = active.pathId === version.pathId;
@@ -145,25 +154,36 @@ export async function acceptQuizControl(db: QuizDb, context: QuizButtonContext, 
     await tx.quizRun.update({ where: { id: run.id }, data: { status: "RESTARTED", finishedAt: new Date(), revision: { increment: 1 } } });
     const snapshot = initialSnapshot(graphSchema.parse(version.graph), snapshotOf(run.snapshot));
     const source = authorized.payload as WorkPayload;
-    const next = await tx.quizRun.create({ data: { contactId: run.contactId, pathId: version.pathId, versionId: version.id, status: "ACTIVE", snapshot: json(snapshot), sourceCommentId: source.commentId ?? run.sourceCommentId, sourcePostId: source.sourcePostId ?? run.sourcePostId, commentCreatedAt: source.commentCreatedAt ? new Date(source.commentCreatedAt) : run.commentCreatedAt, lastInteractionAt: occurredAt } });
+    const next = await tx.quizRun.create({ data: { contactId: run.contactId, pathId: version.pathId, versionId: version.id, status: "ACTIVE", snapshot: json(snapshot), sourceCommentId: source.commentId ?? run.sourceCommentId, sourcePostId: source.sourcePostId ?? run.sourcePostId, sourceMessageId: source.commentId ? null : run.sourceMessageId, commentCreatedAt: source.commentCreatedAt ? new Date(source.commentCreatedAt) : run.commentCreatedAt, lastInteractionAt: occurredAt } });
     await tx.quizEvent.create({ data: { runId: next.id, externalId, kind: context.action.toUpperCase() } });
     return next.id;
   });
 }
 export async function advanceQuizRun(db: QuizDb, runId: string, expectedRevision?: number, now = new Date()): Promise<{ workId: string | null; state: string }> {
-  const repo = createQuizRepository(db);
-  for (let i = 0; i < 10; i++) {
-    const run = await repo.findRun(runId);
+  return db.$transaction(async tx => {
+    const first = await tx.quizRun.findUnique({ where: { id: runId }, select: { contactId: true } });
+    if (!first) return { workId: null, state: "missing" };
+    await lockContact(tx, first.contactId);
+    let run = await tx.quizRun.findUnique({ where: { id: runId }, include: runInclude });
     if (!run) return { workId: null, state: "missing" };
-    const pending = await db.quizWork.findFirst({ where: { runId, status: "PENDING" }, orderBy: { createdAt: "asc" } });
-    if (pending) return { workId: pending.id, state: "send" };
-    if (run.status !== "ACTIVE" || run.path.halted || run.contact.deletedAt || (i === 0 && expectedRevision !== undefined && run.revision !== expectedRevision)) return { workId: null, state: run.status };
+    const pending = await tx.quizWork.findFirst({ where: { runId, status: { in: ["PENDING", "SENDING", "UNKNOWN"] } }, orderBy: { createdAt: "asc" } });
+    if (pending) return { workId: pending.status === "PENDING" ? pending.id : null, state: pending.status === "PENDING" ? "send" : "blocked" };
+    if (run.status !== "ACTIVE" || run.path.halted || run.contact.deletedAt || (expectedRevision !== undefined && run.revision !== expectedRevision)) return { workId: null, state: run.status };
     const graph = graphSchema.parse(run.version.graph);
-    const current = snapshotOf(run.snapshot);
-    if (current.phase !== "ready") return { workId: null, state: current.phase };
-    const transition = advanceNode(graph, current);
-    const committed = await repo.commitTransition({ runId, expectedRevision: run.revision, externalId: `quiz-advance:${run.id}:${run.revision}`, nodeId: current.nodeId, after: transition.after, qualification: qualify(graph.qualification, transition.after), outbound: transition.outbound, now });
-    if (committed !== "applied") return { workId: null, state: committed };
-  }
-  return { workId: null, state: "complete" };
+    // One contact lock and transaction for bounded local steps; sending remains outside it.
+    for (let i = 0; i < MAX_QUIZ_NODES; i++) {
+      const current = snapshotOf(run.snapshot);
+      if (current.phase !== "ready") return { workId: null, state: current.phase };
+      const externalId = `quiz-advance:${run.id}:${run.revision}`;
+      if (await tx.quizEvent.findUnique({ where: { externalId } })) return { workId: null, state: "duplicate" };
+      const transition = advanceNode(graph, current);
+      await tx.quizEvent.create({ data: { runId, externalId, nodeId: current.nodeId, kind: transition.outbound ? "PREPARED" : "TRANSITION" } });
+      if (transition.outbound) {
+        const work = await createWork(tx, run, { message: transition.outbound }, transition.after);
+        return { workId: work.id, state: "send" };
+      }
+      run = await saveSnapshot(tx, run, transition.after, qualify(graph.qualification, transition.after), now);
+    }
+    return { workId: null, state: "complete" };
+  });
 }

@@ -39,7 +39,7 @@ export type CoreEnv = DatabaseEnv & {
   IP_HASH_SALT: string;
   SESSION_SIGNING_KEY: string;
   LOGIN_THROTTLE: LoginThrottleBinding;
-  JOBS_API: { sendManualMessage(input: ManualMessageInput): Promise<ManualMessageResult> };
+  JOBS_API: { sendManualMessage(input: ManualMessageInput): Promise<ManualMessageResult>; processEvent(job: InstagramJob): Promise<import("@/lib/delivery").JobResult> };
   INSTAGRAM_EVENTS: QueueBinding;
   EVENT_JOURNAL: JournalBucket;
 };

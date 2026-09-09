@@ -8,7 +8,7 @@ export async function deleteQuizContact(db: QuizDb, bucket: JournalBucket, id: s
     const contact = await tx.quizContact.findUnique({ where: { id } });
     if (!contact) throw new QuizError("quiz_contact_not_found", 404);
     await tx.quizContact.update({ where: { id }, data: { deletedAt: contact.deletedAt ?? new Date(), instagramUserId: null, username: null, email: null, fields: {}, tags: [], lastInteractionAt: null } });
-    await tx.quizRun.updateMany({ where: { contactId: id }, data: { status: "STOPPED", snapshot: {}, qualificationReasons: [], qualified: false, qualifiedAt: null, sourceCommentId: "", sourcePostId: "", lastInteractionAt: null, finishedAt: new Date() } });
+    await tx.quizRun.updateMany({ where: { contactId: id }, data: { status: "STOPPED", snapshot: {}, qualificationReasons: [], qualified: false, qualifiedAt: null, sourceCommentId: null, sourcePostId: null, sourceMessageId: null, commentCreatedAt: null, lastInteractionAt: null, finishedAt: new Date() } });
     await tx.quizWork.updateMany({ where: { run: { contactId: id } }, data: { status: "CANCELLED", payload: {}, afterSnapshot: {} } });
   });
   // Remove journals before deduplication rows, in bounded batches. Repeating deletion resumes cleanup.

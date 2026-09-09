@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const MAX_QUIZ_NODES = 10;
+const quizTriggerSchema = z.enum(["comment", "dm"]);
+export type QuizTrigger = z.infer<typeof quizTriggerSchema>;
 export const safeKey = z.string().min(1).max(80).regex(/^[\p{L}\p{N}_-]+$/u).refine(v => !["__proto__", "prototype", "constructor"].includes(v));
 const target = z.union([safeKey, z.literal("")]);
 const value = z.union([z.string().max(1000), z.number().finite(), z.boolean(), z.null()]);
@@ -19,7 +21,7 @@ export const ruleGroupSchema = z.object({ mode: z.enum(["any", "all"]), rules: z
 const base = { id: safeKey, label: z.string().max(100), x: z.number().min(0).max(5000), y: z.number().min(0).max(5000) };
 const https = z.string().max(2048).refine(v => { try { const u = new URL(v); return u.protocol === "https:" && !u.username && !u.password; } catch { return false; } });
 export const nodeSchema = z.discriminatedUnion("type", [
-  z.object({ ...base, type: z.literal("start"), keyword: z.string().trim().max(80), postIds: z.array(z.string().regex(/^\d+$/)).max(100), allPosts: z.boolean(), text: z.string().max(640), cta: z.string().max(20), next: target }).strict(),
+  z.object({ ...base, type: z.literal("start"), trigger: quizTriggerSchema.default("comment"), keyword: z.string().trim().max(80), postIds: z.array(z.string().regex(/^\d+$/)).max(100), allPosts: z.boolean(), text: z.string().max(640), cta: z.string().max(20), next: target }).strict(),
   z.object({ ...base, type: z.literal("message"), text: z.string().max(1000), material: z.object({ name: z.string().min(1).max(20), url: https }).strict().optional(), next: target }).strict().refine(n => !n.material || n.text.length <= 640),
   z.object({ ...base, type: z.literal("question"), text: z.string().max(640), input: z.enum(["choice", "text", "email"]), field: target, required: z.boolean(), next: target, choices: z.array(z.object({ id: safeKey, label: z.string().max(20), value: z.string().max(1000), next: target }).strict()).max(3) }).strict().refine(n => n.choices.length + (n.required ? 0 : 1) <= 3),
   z.object({ ...base, type: z.literal("condition"), when: ruleGroupSchema, yes: target, no: target }).strict(),

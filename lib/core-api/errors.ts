@@ -1,7 +1,7 @@
 import type { GraphIssue } from "@/lib/quiz/contracts";
 const messages: Record<string, string> = {
   quiz_revision_conflict: "Dane zmieniły się w innej karcie lub rozmowie. Zachowano Twoje zmiany. Pobierz aktualną wersję przed ponownym zapisem.",
-  quiz_trigger_conflict: "Ten zakres postów i hasło kolidują z aktywną kampanią lub ścieżką. Zmień hasło, posty albo wyłącz kolidujące wejście.",
+  quiz_trigger_conflict: "To hasło koliduje z aktywną kampanią lub ścieżką w tym samym kanale (komentarze lub DM). Zmień hasło, zakres postów dla komentarzy albo wyłącz kolidujące wejście.",
   quiz_invalid_graph: "Uzupełnij wskazane kroki i połączenia przed publikacją.",
   quiz_path_not_found: "Nie znaleziono ścieżki.",
   quiz_contact_not_found: "Nie znaleziono kontaktu.",

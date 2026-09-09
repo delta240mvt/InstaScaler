@@ -91,14 +91,18 @@ export async function createAutomation(db: { automation: Pick<AutomationStore["a
   if ("$transaction" in db && "quizPath" in db) return (db as unknown as QuizDb).$transaction(async tx => {
     await lockAccount(tx, input.instagramAccountId);
     await checkQuizConflict(tx, input);
-    return createAutomation(tx as unknown as typeof db, input);
+    return createAutomation({ automation: tx.automation }, input);
   });
   return db.automation.create({ data: normalizeAutomationInput(input) });
 }
 
 async function checkQuizConflict(tx: QuizTx, input: AutomationInput) {
   const value = automationInputSchema.parse(input);
-  if (value.isActive) await assertNoQuizConflict(tx, value.instagramAccountId, { allPosts: value.matchAnyPost || value.pendingNextReel, postIds: value.postId ? [value.postId] : [], keywords: value.keywords, matchAnyWord: value.matchAnyWord });
+  if (value.isActive) {
+    const trigger = { allPosts: value.matchAnyPost || value.pendingNextReel, postIds: value.postId ? [value.postId] : [], keywords: value.keywords, matchAnyWord: value.matchAnyWord };
+    await assertNoQuizConflict(tx, value.instagramAccountId, trigger);
+    if (value.dmTriggerEnabled) await assertNoQuizConflict(tx, value.instagramAccountId, { ...trigger, trigger: "dm" });
+  }
 }
 
 export async function updateAutomation(db: { automation: Pick<AutomationStore["automation"], "findUnique" | "update"> }, id: string, input: Partial<AutomationInput>): Promise<unknown> {
@@ -110,7 +114,7 @@ export async function updateAutomation(db: { automation: Pick<AutomationStore["a
     for (const accountId of [...new Set([current.instagramAccountId, input.instagramAccountId ?? current.instagramAccountId])].sort()) await lockAccount(tx, accountId);
     const latest = await tx.automation.findUniqueOrThrow({ where: { id } });
     await checkQuizConflict(tx, { ...latest, ...input });
-    return updateAutomation(tx as unknown as typeof db, id, input);
+    return updateAutomation({ automation: tx.automation }, id, input);
   });
   automationInputSchema.parse({ ...current, ...value });
   const linkFieldsPresent = ["trackedDestinationUrl", "secondaryDestinationUrl", "secondaryButtonLabel", "linkButtonLabel"].some((key) => Object.hasOwn(value, key));

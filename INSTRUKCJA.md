@@ -5,7 +5,8 @@ Ten przewodnik prowadzi od terminala Codexa do działającej instancji Cloudflar
 ## Ścieżki START — konfiguracja i obsługa
 
 1. Po aktualizacji kodu wykonaj kopię bazy i sprawdź `npx prisma migrate status`. Zastosuj addytywną migrację quizów poleceniem `npm run db:migrate`; nie używaj resetu ani `db push` na produkcji. Wygeneruj klienta przez `npm run db:generate`.
-2. Otwórz **Ścieżki**, wybierz konto i utwórz szkic. Przykład jest fikcyjny. Dostosuj hasło START, zakres postów i otwierający DM. Szkic sam niczego nie wysyła.
+   Wejście przez DM wymaga migracji `20260909120000_quiz_dm_trigger`, która dodaje źródłowy identyfikator wiadomości i dopuszcza brak źródłowego komentarza. Dotychczasowe ścieżki nadal działają po komentarzu. Po migracji wdrażaj Jobs, Core, a następnie zbudowany Web.
+2. Otwórz **Ścieżki**, wybierz konto i sposób uruchomienia: komentarz pod postem albo słowo w DM. Utwórz szkic. Przykład jest fikcyjny. Dostosuj hasło START i zaproszenie z przyciskiem; zakres postów dotyczy tylko komentarzy. Szkic sam niczego nie wysyła.
 3. Wybierz karty na planszy. Edytuj treści, odpowiedzi, pola i tagi oraz „Połącz z krokiem”. Warunek ma osobne cele dla wyniku pozytywnego i negatywnego. Cały graf ma najwyżej 10 kroków, łącznie ze Startem i Końcem.
 4. W zakładce **Kwalifikacja** ustaw dowolny lub wszystkie warunki. Domyślnie wystarczy poprawny e-mail lub zainteresowanie pomocą. Podgląd używa tego samego silnika, ale nie korzysta z Meta i nie tworzy kontaktów.
 5. Zapisz szkic, usuń wskazane błędy i wybierz **Opublikuj i włącz**. Kolidująca aktywna kampania lub ścieżka z tym samym hasłem i zakresem postów zablokuje publikację. Publikacja nie zmienia wersji już rozpoczętych rozmów.
@@ -15,7 +16,11 @@ Ten przewodnik prowadzi od terminala Codexa do działającej instancji Cloudflar
 
 Nowy moduł nie wymaga kolejnego bindingu ani usługi. Wdrażaj **Jobs → Core → Web**; build Web musi powstać przed wdrożeniem. Po aktualizacji sprawdź `/health`, logowanie, `/paths`, podgląd i bazę kontaktów. W razie regresji wyłącz wejścia i wstrzymaj ścieżki; można przywrócić poprzedni kod bez usuwania nowych tabel.
 
+Optymalizacja odczytów wymaga ponownego `npm run db:generate` i wdrożenia Jobs oraz Core. `relationJoins` jest opcją generatora Prisma, nie zmianą tabel; nie wymaga dodatkowej migracji SQL. Log `instagram_job_timing` rozdziela czas od przyjęcia webhooka do uruchomienia Jobs (`journalAgeMs`) i czas obsługi (`elapsedMs`). Log `quiz_delivery_timing` pokazuje przygotowanie, żądanie Meta i zapis wyniku (`prepareMs`, `metaMs`, `persistMs`). Zakończenie zadania obejmuje także porządki po wysyłce i nie oznacza chwili wyświetlenia DM na telefonie. Pomiary nie zawierają treści wiadomości ani tokenów.
+
 ### Testy quizów
+
+Odpowiedzi Ścieżek są wysyłane bez dodatkowego przebiegu kolejki podczas obsługi zdarzenia w Jobs. Aktualizacja tego mechanizmu wymaga wdrożenia Workera Jobs; nie dodaje migracji ani bindingów. Limity konta i okno wiadomości nadal obowiązują. Pierwsze ponowienie po błędzie przejściowym czeka 60 sekund, a niepewna wysyłka wymaga sprawdzenia.
 
 `npm test`, `npm run typecheck` i `npm run lint` sprawdzają kod. `npm run test:e2e:local` testuje panel na desktopie i mobile z kontrolowanymi odpowiedziami API; wymaga wcześniejszego `npm run build`.
 
@@ -72,7 +77,7 @@ npx wrangler queues create instascaler-events-dlq
 
 Pliki `wrangler.web.jsonc`, `wrangler.core.jsonc` i `wrangler.jobs.jsonc` definiują Workery, bindingi R2/Queue, Durable Objects i Workflows. Nie zmieniaj ich nazw, jeśli tworzysz zasoby z poleceń powyżej.
 
-Core korzysta z bindingu usługowego `JOBS_API`, który wskazuje na `instascaler-jobs`, entrypoint `ManualMessages`. Dzięki niemu ręczne wiadomości ze skrzynki są wysyłane przez Jobs z limitem konta. Binding nie wymaga nowego sekretu ani publicznego endpointu. Wdrażaj Jobs przed Core, aby entrypoint był dostępny.
+Core korzysta z bindingu usługowego `JOBS_API`, który wskazuje na `instascaler-jobs`, entrypoint `ManualMessages`. Dzięki niemu ręczne wiadomości ze skrzynki są wysyłane przez Jobs z limitem konta. Binding obsługuje również `processEvent`: po trwałym dodaniu zdarzenia do kolejki Core rozpoczyna obsługę w Jobs bez oczekiwania na konsumenta. Kolejka pozostaje ścieżką awaryjną. Binding nie wymaga nowego sekretu ani publicznego endpointu. Wdrażaj Jobs przed Core, aby entrypoint był dostępny.
 
 ## 5. Sekrety
 
@@ -87,6 +92,8 @@ npx wrangler secret put SCHEDULER_BOOTSTRAP_TOKEN --config wrangler.jobs.jsonc
 ```
 
 Powtórz `wrangler secret put NAZWA --config wrangler.core.jsonc` dla pozostałych sekretów Core.
+
+Core ma placement `aws:eu-central-1`, zgodny z regionem używanej bazy Neon. Przy przeniesieniu bazy zmień region w `wrangler.core.jsonc`. Prywatne wywołanie Jobs pochodzi z Core; nie włączamy placement dla konsumenta kolejki, którego ta opcja nie dotyczy. Wdrożenie metody `processEvent` wymaga kolejności Jobs → Core.
 
 ## 6. Deploy i bootstrap
 

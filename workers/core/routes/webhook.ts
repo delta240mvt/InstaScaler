@@ -3,6 +3,7 @@ import { journalEvent, verifyMetaSignature, type EventEnvelope } from "@/lib/eve
 import type { CoreEnv } from "@/lib/cloudflare/env";
 import { admitInboundEvent, type AdmissionDb } from "@/lib/jobs/budget";
 import { sourceTimestamp } from "@/lib/delivery/quiz-policy";
+import type { InstagramJob } from "@/lib/jobs/contracts";
 
 export type WebhookDb = AdmissionDb & {
   instagramAccount: { findUnique(args: unknown): Promise<{ id: string } | null> };
@@ -72,6 +73,7 @@ export function webhookRoutes(getDb?: (env: CoreEnv) => WebhookDb) {
       return context.json({ error: "journal_unavailable", requestId }, 503);
     }
     const process = (async () => {
+      const immediate: Promise<unknown>[] = [];
       for (const [index, envelope] of envelopes.entries()) {
         const journal = journals[index];
         if (getDb) {
@@ -79,8 +81,16 @@ export function webhookRoutes(getDb?: (env: CoreEnv) => WebhookDb) {
           const account = await db.instagramAccount.findUnique({ where: { instagramId: envelope.instagramAccountId }, select: { id: true } });
           if (!account || await admitInboundEvent(db, { externalId: envelope.externalId, instagramAccountId: account.id, kind: envelope.kind, r2Key: journal.key, source: "WEBHOOK" }) !== "admitted") continue;
         }
-        await context.env.INSTAGRAM_EVENTS.send({ version: 1, kind: envelope.kind, externalId: journal.externalId, instagramAccountId: envelope.instagramAccountId, r2Key: journal.key });
+        const job: InstagramJob = { version: 1, kind: envelope.kind, externalId: journal.externalId, instagramAccountId: envelope.instagramAccountId, r2Key: journal.key };
+        await context.env.INSTAGRAM_EVENTS.send(job);
+        // Queue is durable before the fast path. Jobs owns sending and atomically claims the event.
+        if (getDb && context.env.JOBS_API) {
+          immediate.push(Promise.resolve().then(() => context.env.JOBS_API.processEvent(job)).catch(() => {
+            console.warn("Immediate Jobs call failed; Queue retains the event", { code: "IMMEDIATE_DELIVERY_UNAVAILABLE" });
+          }));
+        }
       }
+      await Promise.all(immediate);
     })().catch(() => {
       console.error("Webhook processing failed", { requestId: crypto.randomUUID(), error: "queue_publish_failed" });
     });

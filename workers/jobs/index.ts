@@ -1,11 +1,10 @@
 import type { JobsEnv } from "@/lib/cloudflare/env";
 import { AccountRateLimiter } from "@/workers/jobs/account-rate-limiter";
 import { createPrisma } from "@/lib/db/neon";
-import { loadJournalEvent, deleteJournalEvent, journalFollowUpJob } from "@/lib/events/journal";
 import { parseInstagramJob } from "@/lib/jobs/contracts";
-import { processInstagramJob, type JobResult } from "@/lib/delivery";
-import { deliverInstagramJob } from "@/lib/delivery/runtime";
-import { recordDailyOutcome, reserveQueueRetry } from "@/lib/jobs/budget";
+import type { JobResult } from "@/lib/delivery";
+import { processQueuedEvent } from "@/lib/delivery/queued-event";
+import { reserveQueueRetry } from "@/lib/jobs/budget";
 
 type QueueMessage<T = unknown> = {
   body: T;
@@ -44,20 +43,7 @@ const worker = {
   async queue(batch: QueueBatch, env: JobsEnv): Promise<void> {
     const db = createPrisma(env.DATABASE_URL);
     await consumeQueueBatch(batch, async (body) => {
-      let job;
-      try { job = parseInstagramJob(body); }
-      catch { return { status: "failed", code: "INVALID_JOB" }; }
-      if (job.kind === "FOLLOW_UP" && !job.r2Key) job = await journalFollowUpJob(env.EVENT_JOURNAL, job);
-      const account = await db.instagramAccount.findUnique({ where: { instagramId: job.instagramAccountId }, select: { id: true } });
-      const result = await processInstagramJob({
-        db,
-        accountId: account?.id,
-        load: (key) => loadJournalEvent(env.EVENT_JOURNAL, key),
-        remove: (key) => deleteJournalEvent(env.EVENT_JOURNAL as Required<Pick<typeof env.EVENT_JOURNAL, "delete">>, key),
-        deliver: (currentJob, payload) => deliverInstagramJob({ db, env }, currentJob, payload),
-      }, job);
-      if (account) await recordDailyOutcome(db, account.id, result);
-      return result;
+      return processQueuedEvent(env, body);
     }, async (body) => {
       let job;
       try { job = parseInstagramJob(body); } catch { return false; }
