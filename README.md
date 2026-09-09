@@ -47,11 +47,34 @@ Logo panelu, stron informacyjnych i raportów oraz favicon korzystają ze wspól
 | Wiele kont i analityka | Do pięciu kont, skrzynka, logi dostaw, kliknięcia oraz historia obserwujących jako wykres liniowy i tabela. |
 | Odporność produkcyjna | R2, Queue, Durable Objects, Workflows, idempotencja i odzyskiwanie błędów. |
 
-## Kształt środowiska uruchomieniowego
-
-### Moduł Ścieżki
+## Ścieżki — quizy i własna baza leadów
 
 W panelu **Ścieżki** tworzysz szkic, łączysz kroki i przechodzisz bezpieczny podgląd rozmowy. Maksymalnie 10 kroków obejmuje Start, Koniec i wszystkie gałęzie. Każda publikacja tworzy nową wersję; rozpoczęte rozmowy pozostają przy swojej wersji. Nowy przykładowy szkic nie wysyła wiadomości do czasu świadomej publikacji.
+
+### Co możesz zbudować
+
+Całą ścieżkę edytujesz w panelu administratora: treści, odpowiedzi, połączenia, materiały, tagi i reguły kwalifikacji. Plansza pokazuje karty oraz połączenia; następny krok wybierasz w formularzu. Możesz przesuwać karty, duplikować kroki i tworzyć różne gałęzie zależnie od odpowiedzi.
+
+| Krok | Zastosowanie |
+| --- | --- |
+| Start | Hasło w komentarzu, zakres postów, otwierający DM i przycisk „Zaczynamy”. |
+| Wiadomość | Wyjaśnienie, wskazówka lub darmowy materiał z przyciskiem prowadzącym do linku HTTPS. |
+| Pytanie | Wybór przyciskiem, odpowiedź tekstowa albo e-mail; zapis odpowiedzi w polu kontaktu. Pytanie może być opcjonalne. |
+| Warunek | Wybór jednej z dwóch gałęzi na podstawie danych i odpowiedzi uczestnika. |
+| Akcja | Dodanie lub usunięcie tagów, ustawienie pól oraz oznaczenie zainteresowania pomocą lub ofertą. |
+| Koniec | Zakończenie quizu albo przekazanie rozmowy administratorowi. |
+
+### Pierwsza ścieżka w panelu
+
+1. Otwórz **Ścieżki** (`/paths`), wybierz konto Instagram i kliknij **Utwórz ścieżkę**. Otrzymasz edytowalny przykład.
+2. Dostosuj Start, pytania, odpowiedzi i połączenia. W zakładce **Kwalifikacja** wybierz, kiedy kontakt ma zostać wartościowym leadem.
+3. Przejdź obie gałęzie w **Podglądzie**. Symulacja używa tego samego silnika co quiz, bez wysyłania DM i zapisywania kontaktów.
+4. Kliknij **Zapisz szkic**, popraw wskazane błędy, a następnie **Opublikuj i włącz**. Publikację blokują m.in. pętle, brakujące połączenia oraz konflikt hasła i postów z aktywną kampanią lub inną ścieżką.
+5. W **Bazie kontaktów** (`/paths/contacts`) przeglądaj odpowiedzi, tagi, źródłowe posty i powody kwalifikacji. Filtruj kontakty po koncie, ścieżce, stanie rozmowy, tagu, e-mailu lub zainteresowaniu pomocą.
+
+Lista ścieżek pokazuje liczby przebiegów: rozpoczętych, zakończonych i spełniających warunki kwalifikacji. Profil kontaktu pozwala poprawić e-mail, tagi i pola oraz przejrzeć historię rozmów. Szczegóły konfiguracji i obsługi znajdziesz w [instrukcji modułu Ścieżki](INSTRUKCJA.md#ścieżki-start--konfiguracja-i-obsługa).
+
+### Wejście, kwalifikacja i sterowanie rozmową
 
 Wejście to komentarz z hasłem (domyślnie START) → jeden prywatny DM z przyciskiem → kliknięcie „Zaczynamy” → quiz. Sam komentarz nie otwiera standardowego okna wiadomości. Kolejne DM wymagają uprawnionej interakcji z ostatnich 24 godzin; czas pochodzi z Meta, a nie z ponowienia zadania. Brak wiarygodnej daty komentarza blokuje otwierający DM. Nie ma automatycznego DM po nowym obserwowaniu.
 
@@ -60,6 +83,8 @@ Odbiorca może pominąć opcjonalne pytanie lub napisać STOP. Administrator mo�
 Domyślna kwalifikacja to poprawny e-mail **LUB** zainteresowanie pomocą/ofertą. W edytorze można ustawić dowolny lub wszystkie warunki. Adres jest sprawdzany składniowo, bez potwierdzenia własności i bez automatycznej zgody marketingowej. „Materiał wysłany” nie oznacza kliknięcia, przeczytania ani zakupu; quiz nie śledzi kliknięć per odbiorca. Dane kontaktów nie trafiają do publicznych raportów.
 
 Przebiegi i wysyłki są zapisywane w Neon. Kompaktowe zadania `QUIZ_STEP` używają istniejącej Queue i dziennika `quiz-steps/` w R2. Odzyskiwanie obsługuje przerwanie przed publikacją zadania i po zapisaniu odpowiedzi. Usunięcie kontaktu usuwa jego profil i odpowiedzi oraz zostawia techniczny odcisk chroniący przed odtworzeniem danych ze starego zdarzenia. Nowy, późniejszy komentarz może rozpocząć kontakt ponownie.
+
+## Kształt środowiska uruchomieniowego
 
 ### Jak to działa — bez technicznego żargonu
 
@@ -266,6 +291,7 @@ Repozytorium zawiera szczegółowe zasady implementacji dla Codexa i Claude Code
 
 - [ ] Zaloguj administratora i połącz profesjonalne konto Instagram.
 - [ ] Wyślij testowy komentarz z innego konta i sprawdź DM, follow-gate, link oraz follow-up.
+- [ ] Sprawdź ścieżkę START → „Zaczynamy” → odpowiedź → tag i kwalifikacja w bazie kontaktów; przetestuj także opcjonalny e-mail, STOP i pauzę administratora.
 - [ ] Sprawdź `/health`, logi, powielony webhook i odzyskiwanie błędów.
 
 ## Postawa bezpieczeństwa
@@ -276,7 +302,8 @@ Podpisy Meta są weryfikowane, tokeny są szyfrowane w spoczynku, Queue nie prze
 
 - [x] Workery Web, Core i Jobs; Neon, R2, Queue, Durable Objects i Workflows
 - [x] Follow-gate, początkowy DM, follow-up, linki śledzone i odzyskiwanie
-- [ ] Rozgałęzienia kampanii, bogatsza analityka i własna domena
+- [x] Ścieżki START: edytor do 10 kroków, rozgałęzienia, quizy, tagi, kwalifikacja i własna baza kontaktów
+- [ ] Bogatsza analityka i własna domena
 
 ## FAQ
 
