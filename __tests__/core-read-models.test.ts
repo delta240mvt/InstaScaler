@@ -29,6 +29,22 @@ describe("Core read models", () => {
     expect(create).toHaveBeenCalledOnce();
   });
 
+  it("redirects when recording a tracked click fails", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const db = {
+        trackedLink: { findUnique: async () => ({ id: "link", automationId: "automation", destinationUrl: "https://example.com", automation: { instagramAccountId: "account" } }) },
+        linkClick: { create: vi.fn(async () => { throw new Error("Neon unavailable"); }) },
+      };
+      const response = await redirectRoutes(() => db).request("https://app.example.com/r/slug", {}, { IP_HASH_SALT: "salt" } as never);
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toBe("https://example.com");
+      expect(consoleError).toHaveBeenCalledWith("Failed to record tracked link click", expect.objectContaining({ trackedLinkId: "link", error: expect.any(Error) }));
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it("mounts public reports and redirects plus private logs and diagnostics", () => {
     expect(reportRoutes(() => ({}) as never).routes.some((route) => route.path === "/reports/:shareSlug")).toBe(true);
     expect(redirectRoutes(() => ({}) as never).routes.some((route) => route.path === "/r/:slug")).toBe(true);
