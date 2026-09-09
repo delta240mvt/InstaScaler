@@ -2,6 +2,23 @@
 
 Ten przewodnik prowadzi od terminala Codexa do działającej instancji Cloudflare i Meta. Nie wklejaj sekretów do Git ani do rozmowy z asystentem.
 
+## Oddzielny lokalny landing
+
+Opcjonalny katalog `landing/` służy do samodzielnej strony Astro dla marki GENIUS@WORK. Jest ignorowany przez nadrzędny Git; utrzymuj jego kopię niezależnie od repozytorium InstaScalera. Landing ma własne `package.json`, konfigurację Cloudflare Pages i instrukcję w lokalnym `landing/README.md`.
+
+Weryfikację landingu uruchamiaj z jego katalogu: `npm run check`, `npm run build`, a następnie `node scripts/verify-build.mjs`. Wdrożenie dotyczy wyłącznie świeżego `landing/dist/`, nie Workerów aplikacji. Dane `CLOUDFLARE_*` i `LANDING_*` trzymaj w nadrzędnym, ignorowanym `.env`; nie kopiuj sekretów aplikacji do landingu ani jego publicznych plików. Istniejąca kolejność wdrażania Jobs → Core → Web pozostaje niezależna od strony informacyjnej.
+
+### Nagranie filmu z lokalnego panelu
+
+Wymagane są gotowy build aplikacji (`npm run build`), zależności lokalnego landingu (w tym `tsx`), przeglądarka Microsoft Edge oraz `ffmpeg` i `ffprobe` w PATH. W osobnym terminalu uruchom `npx next start --hostname 127.0.0.1 --port 3137`. Z katalogu głównego:
+
+```bash
+node --import ./landing/node_modules/tsx/dist/loader.mjs scripts/record-product-demo.ts
+node scripts/render-product-demo.mjs
+```
+
+Opcja `--probe` zapisuje tylko cztery kadry do sprawdzenia. Nagrywanie korzysta z prawdziwego lokalnego interfejsu i istniejących danych testowych; wszystkie API są zastępowane fixture'ami, a ruch poza `127.0.0.1:3137` jest blokowany. Nie zmieniaj tego adresu na produkcję. Surowe nagrania pozostają w `landing/.recording/`, gotowe pliki w `landing/public/media/`. Po renderze sprawdź materiał, a następnie wykonaj check i build landingu przed wdrożeniem. Film nie wymaga wdrażania Workerów aplikacji.
+
 ## Ścieżki START — konfiguracja i obsługa
 
 1. Po aktualizacji kodu wykonaj kopię bazy i sprawdź `npx prisma migrate status`. Zastosuj addytywną migrację quizów poleceniem `npm run db:migrate`; nie używaj resetu ani `db push` na produkcji. Wygeneruj klienta przez `npm run db:generate`.

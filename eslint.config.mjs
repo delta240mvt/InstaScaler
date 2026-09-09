@@ -18,6 +18,7 @@ const eslintConfig = defineConfig([
     ".wrangler/**",
     "dist/**",
     "dist-*/**",
+    "landing/**",
     "app/generated/**",
     "out/**",
     "build/**",

@@ -53,3 +53,6 @@ next-env.d.ts
 
 # Added by ggshield
 .cache_ggshield
+
+# Standalone GENIUS@WORK landing (local project and deployment)
+/landing/

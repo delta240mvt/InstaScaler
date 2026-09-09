@@ -35,6 +35,12 @@ Panel i strony publiczne są po polsku, wraz z walidacją, szablonami kampanii, 
 
 Logo panelu, stron informacyjnych i raportów oraz favicon korzystają ze wspólnego pliku `app/icon.svg`, identycznego z faviconem portalu DELTA240MVT.
 
+## Lokalny landing GENIUS@WORK
+
+GENIUS@WORK jest marką narzędzi DELTA240MVT, a InstaScaler jednym z jej produktów. Osobny landing Astro może znajdować się w lokalnym katalogu `landing/`. Katalog jest ignorowany przez Git oraz wyłączony z kontroli TypeScript i ESLint aplikacji Next.js; ma własne zależności, testy i build. Nie jest częścią publicznego kodu tego repozytorium. Konfiguracja domeny i dane wdrożeniowe pozostają w ignorowanym `.env`.
+
+Film produktowy można nagrać z lokalnego panelu za pomocą `scripts/record-product-demo.ts` i przygotować w `scripts/render-product-demo.mjs`. Nagranie używa istniejących fixture'ów E2E, oznacza dane demonstracyjne i blokuje ruch poza lokalny serwer. Nie pokazuje kont produkcyjnych ani nie wysyła prawdziwych wiadomości. Gotowe MP4, WebM, poster i podpisy są zapisywane w ignorowanym `landing/public/media/`.
+
 ## Co robi InstaScaler
 
 | Możliwość | Znaczenie w praktyce |
