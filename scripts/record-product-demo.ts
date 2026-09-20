@@ -6,7 +6,8 @@ import { quizFixtureApi } from "../e2e/quiz-fixtures";
 
 async function main() {
 const base = "http://127.0.0.1:3137";
-const output = resolve("landing/.recording");
+const landingRoot = resolve(process.env.LANDING_ROOT_DIR || "landing");
+const output = resolve(landingRoot, ".recording");
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ headless: true, channel: "msedge" });
 const probe = process.argv.includes("--probe");

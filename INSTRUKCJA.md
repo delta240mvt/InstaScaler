@@ -4,20 +4,21 @@ Ten przewodnik prowadzi od terminala Codexa do działającej instancji Cloudflar
 
 ## Oddzielny lokalny landing
 
-Opcjonalny katalog `landing/` służy do samodzielnej strony Astro dla marki GENIUS@WORK. Jest ignorowany przez nadrzędny Git; utrzymuj jego kopię niezależnie od repozytorium InstaScalera. Landing ma własne `package.json`, konfigurację Cloudflare Pages i instrukcję w lokalnym `landing/README.md`.
+Samodzielna strona Astro dla marki GENIUS@WORK znajduje się poza repozytorium InstaScalera. Jej nadrzędny Git ignoruje cały folder. Landing ma własne `package.json`, konfigurację Cloudflare Pages i `README.md`. Ustaw `LANDING_ROOT_DIR` w lokalnym `.env` InstaScalera na pełną ścieżkę tego katalogu, aby skrypty nagrywania zapisywały materiały we właściwym miejscu.
 
-Weryfikację landingu uruchamiaj z jego katalogu: `npm run check`, `npm run build`, a następnie `node scripts/verify-build.mjs`. Wdrożenie dotyczy wyłącznie świeżego `landing/dist/`, nie Workerów aplikacji. Dane `CLOUDFLARE_*` i `LANDING_*` trzymaj w nadrzędnym, ignorowanym `.env`; nie kopiuj sekretów aplikacji do landingu ani jego publicznych plików. Istniejąca kolejność wdrażania Jobs → Core → Web pozostaje niezależna od strony informacyjnej.
+Weryfikację landingu uruchamiaj z jego katalogu: `npm.cmd run check`, `npm.cmd run build`, a następnie `node scripts/verify-build.mjs`. Wdrożenie dotyczy wyłącznie świeżego `dist/` landingu. Jego ignorowany `.env.cloudflare.local` zawiera `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ZONE_ID` i `LANDING_DOMAIN`; nie kopiuj tam sekretów aplikacji. Istniejąca kolejność wdrażania Jobs → Core → Web pozostaje niezależna od strony informacyjnej. Samo przeniesienie katalogu nie wymaga ponownego wdrażania ani zmiany DNS.
 
 ### Nagranie filmu z lokalnego panelu
 
 Wymagane są gotowy build aplikacji (`npm run build`), zależności lokalnego landingu (w tym `tsx`), przeglądarka Microsoft Edge oraz `ffmpeg` i `ffprobe` w PATH. W osobnym terminalu uruchom `npx next start --hostname 127.0.0.1 --port 3137`. Z katalogu głównego:
 
-```bash
-node --import ./landing/node_modules/tsx/dist/loader.mjs scripts/record-product-demo.ts
-node scripts/render-product-demo.mjs
+```powershell
+$landingDir = node --env-file=.env -p "process.env.LANDING_ROOT_DIR"
+& "$landingDir/node_modules/.bin/tsx.cmd" --env-file=.env scripts/record-product-demo.ts
+node --env-file=.env scripts/render-product-demo.mjs
 ```
 
-Opcja `--probe` zapisuje tylko cztery kadry do sprawdzenia. Nagrywanie korzysta z prawdziwego lokalnego interfejsu i istniejących danych testowych; wszystkie API są zastępowane fixture'ami, a ruch poza `127.0.0.1:3137` jest blokowany. Nie zmieniaj tego adresu na produkcję. Surowe nagrania pozostają w `landing/.recording/`, gotowe pliki w `landing/public/media/`. Po renderze sprawdź materiał, a następnie wykonaj check i build landingu przed wdrożeniem. Film nie wymaga wdrażania Workerów aplikacji.
+Opcja `--probe` zapisuje tylko cztery kadry do sprawdzenia. Nagrywanie korzysta z prawdziwego lokalnego interfejsu i istniejących danych testowych; wszystkie API są zastępowane fixture'ami, a ruch poza `127.0.0.1:3137` jest blokowany. Nie zmieniaj tego adresu na produkcję. Surowe nagrania trafiają do `.recording/`, a gotowe pliki do `public/media/` pod `LANDING_ROOT_DIR`. Po renderze sprawdź materiał, a następnie wykonaj check i build landingu przed wdrożeniem. Film nie wymaga wdrażania Workerów aplikacji.
 
 ## Ścieżki START — konfiguracja i obsługa
 

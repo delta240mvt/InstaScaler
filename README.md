@@ -37,9 +37,9 @@ Logo panelu, stron informacyjnych i raportów oraz favicon korzystają ze wspól
 
 ## Lokalny landing GENIUS@WORK
 
-GENIUS@WORK jest marką narzędzi DELTA240MVT, a InstaScaler jednym z jej produktów. Osobny landing Astro może znajdować się w lokalnym katalogu `landing/`. Katalog jest ignorowany przez Git oraz wyłączony z kontroli TypeScript i ESLint aplikacji Next.js; ma własne zależności, testy i build. Nie jest częścią publicznego kodu tego repozytorium. Konfiguracja domeny i dane wdrożeniowe pozostają w ignorowanym `.env`.
+GENIUS@WORK jest marką narzędzi DELTA240MVT, a InstaScaler jednym z jej produktów. Osobny landing Astro znajduje się poza tym repozytorium, w prywatnym katalogu wskazanym przez `LANDING_ROOT_DIR` w lokalnym `.env`. Ma własne zależności, testy i build. Jego nadrzędne repozytorium ignoruje cały folder landingu. Konfiguracja domeny i dane wdrożeniowe znajdują się w jego własnym, ignorowanym `.env.cloudflare.local`.
 
-Film produktowy można nagrać z lokalnego panelu za pomocą `scripts/record-product-demo.ts` i przygotować w `scripts/render-product-demo.mjs`. Nagranie używa istniejących fixture'ów E2E, oznacza dane demonstracyjne i blokuje ruch poza lokalny serwer. Nie pokazuje kont produkcyjnych ani nie wysyła prawdziwych wiadomości. Gotowe MP4, WebM, poster i podpisy są zapisywane w ignorowanym `landing/public/media/`.
+Film produktowy można nagrać z lokalnego panelu za pomocą `scripts/record-product-demo.ts` i przygotować w `scripts/render-product-demo.mjs`. Nagranie używa istniejących fixture'ów E2E, oznacza dane demonstracyjne i blokuje ruch poza lokalny serwer. Nie pokazuje kont produkcyjnych ani nie wysyła prawdziwych wiadomości. Gotowe MP4, WebM, poster i podpisy są zapisywane w `public/media/` pod `LANDING_ROOT_DIR`. Polecenia z wczytaniem `.env` opisuje `INSTRUKCJA.md`.
 
 ## Co robi InstaScaler
 

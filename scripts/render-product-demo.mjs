@@ -3,7 +3,8 @@ import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 
-const raw=resolve('landing/.recording'), out=resolve('landing/public/media');
+const landingRoot=resolve(process.env.LANDING_ROOT_DIR || 'landing');
+const raw=resolve(landingRoot,'.recording'), out=resolve(landingRoot,'public/media');
 mkdirSync(out,{recursive:true});
 function run(command,args) {
   const r=spawnSync(command,args,{stdio:['ignore','pipe','pipe'],encoding:'utf8',maxBuffer:8*1024*1024});
@@ -38,5 +39,5 @@ const files=Object.fromEntries(['mp4','webm'].map(ext=>{
   return[ext,{bytes:data.length,sha256:createHash('sha256').update(data).digest('hex')}];
 }));
 const duration=Number(probe(mp4).format.duration);
-writeFileSync('landing/src/data/product-video.json',JSON.stringify({duration,mp4:'/media/instascaler-demo.mp4',webm:'/media/instascaler-demo.webm',poster:'/media/instascaler-poster.webp',width:1440,height:960,chapters,files,provenance:'Actual local InstaScaler production build, controlled e2e fixtures, no external requests or live messages. scripts/record-product-demo.ts + scripts/render-product-demo.mjs'},null,2)+'\n');
+writeFileSync(resolve(landingRoot,'src/data/product-video.json'),JSON.stringify({duration,mp4:'/media/instascaler-demo.mp4',webm:'/media/instascaler-demo.webm',poster:'/media/instascaler-poster.webp',width:1440,height:960,chapters,files,provenance:'Actual local InstaScaler production build, controlled e2e fixtures, no external requests or live messages. scripts/record-product-demo.ts + scripts/render-product-demo.mjs'},null,2)+'\n');
 console.log(JSON.stringify({duration,files,chapters},null,2));
